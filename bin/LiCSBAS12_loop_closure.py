@@ -382,8 +382,9 @@ def main(argv=None):
 
     ns_bad_loop = np.sum(res[:, 1, :, :,], axis=0)
     loop_ph_rms_points = np.sum(res[:, 2, :, :,], axis=0)
-    loop_ph_rms_points = np.sqrt(loop_ph_rms_points/ns_loop_ph)
-
+    #loop_ph_rms_points = np.sqrt(loop_ph_rms_points/ns_loop_ph)
+    loop_ph_rms_points = np.sqrt(loop_ph_rms_points**2/ns_loop_ph)
+    
     ### Find stable ref area which have all n_unw and minimum ns_bad_loop and loop_ph_rms_points
     mask1 = (n_unw==np.nanmax(n_unw))
     min_ns_bad_loop = np.nanmin(ns_bad_loop)
@@ -443,6 +444,13 @@ def main(argv=None):
         refyx = np.where(loop_ph_rms_points_masked==np.nanmin(loop_ph_rms_points_masked))
         refy1 = refyx[0][0] # start from 0, not 1
         refx1 = refyx[1][0]
+    '''
+    import rioxarray as rio
+    a = rio.open_rasterio('082D_05128_030500.vel.geo.tif')
+    a[0].values = loop_ph_rms_points_masked
+    a.rio.to_raster('this.tif')
+    
+    '''
     
     refy2 = refy1+1
     refx2 = refx1+1

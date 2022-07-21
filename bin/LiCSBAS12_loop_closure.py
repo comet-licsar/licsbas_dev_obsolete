@@ -843,6 +843,20 @@ def generate_pngs(i):
     ## Calculate loop phase taking into account ref phase
     loop_ph = unw12+unw23-unw13-(ref_unw12+ref_unw23-ref_unw13)
 
+    # getting some average information
+    if np.all(np.isnan(loop_ph)):
+        bias = np.nan
+        rms = np.inf
+    else:
+        loop_2pin = np.round(np.nanmedian(loop_ph)/(2*np.pi))*2*np.pi
+        loop_ph = loop_ph-loop_2pin #unbias 2pi x n
+
+        if multi_prime:
+            bias = np.nanmedian(loop_ph)
+            loop_ph = loop_ph - bias # unbias inconsistent fraction phase
+
+        rms = np.sqrt(np.nanmean(loop_ph**2))
+
     ### Output png. If exist in old, move to save time
     imd1 = ifgd12[:8]
     imd2 = ifgd23[:8]

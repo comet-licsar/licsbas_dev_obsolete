@@ -147,7 +147,8 @@ def main(argv=None):
     rm_ifg_list = []
     nullify = False
     ref_approx = False
-    
+    do_pngs = True
+
     try:
         n_para = len(os.sched_getaffinity(0))
     except:
@@ -163,7 +164,7 @@ def main(argv=None):
     try:
         try:
             opts, args = getopt.getopt(argv[1:], "hd:t:l:",
-                                       ["help", "multi_prime", "nullify",
+                                       ["help", "multi_prime", "nullify", "skip_pngs",
                                         "rm_ifg_list=", "n_para=", "ref_approx="])
         except getopt.error as msg:
             raise Usage(msg)
@@ -185,6 +186,8 @@ def main(argv=None):
                 n_para = int(a)
             elif o == '--nullify':
                 nullify = True
+            elif o == '--skip_pngs':
+                do_pngs = False
             elif o == '--ref_approx':
                 ref_approx = a
         if not ifgdir:
@@ -224,20 +227,21 @@ def main(argv=None):
     bad_loop_pngdir = os.path.join(loopdir,'bad_loop_png')
     bad_loop_cand_pngdir = os.path.join(loopdir,'bad_loop_cand_png')
 
-    if os.path.exists(loop_pngdir):
-        shutil.move(loop_pngdir+'/', loop_pngdir+'_old') #move to old dir
-    if os.path.exists(bad_loop_pngdir):
-        for png in glob.glob(bad_loop_pngdir+'/*.png'):
-            shutil.move(png, loop_pngdir+'_old') #move to old dir
-        shutil.rmtree(bad_loop_pngdir)
-    if os.path.exists(bad_loop_cand_pngdir):
-        for png in glob.glob(bad_loop_cand_pngdir+'/*.png'):
-            shutil.move(png, loop_pngdir+'_old') #move to old dir
-        shutil.rmtree(bad_loop_cand_pngdir)
+    if do_pngs:
+        if os.path.exists(loop_pngdir):
+            shutil.move(loop_pngdir+'/', loop_pngdir+'_old') #move to old dir
+        if os.path.exists(bad_loop_pngdir):
+            for png in glob.glob(bad_loop_pngdir+'/*.png'):
+                shutil.move(png, loop_pngdir+'_old') #move to old dir
+            shutil.rmtree(bad_loop_pngdir)
+        if os.path.exists(bad_loop_cand_pngdir):
+            for png in glob.glob(bad_loop_cand_pngdir+'/*.png'):
+                shutil.move(png, loop_pngdir+'_old') #move to old dir
+            shutil.rmtree(bad_loop_cand_pngdir)
 
-    os.mkdir(loop_pngdir)
-    os.mkdir(bad_loop_pngdir)
-    os.mkdir(bad_loop_cand_pngdir)
+        os.mkdir(loop_pngdir)
+        os.mkdir(bad_loop_pngdir)
+        os.mkdir(bad_loop_cand_pngdir)
 
     ifg_rasdir = os.path.join(tsadir, '12ifg_ras')
     if os.path.isdir(ifg_rasdir): shutil.rmtree(ifg_rasdir)
@@ -587,6 +591,13 @@ def main(argv=None):
             if not np.min(mask) and np.max(mask):
                 nullify_unw(ifgd, mask)
 
+    # generate loop pngs:
+    if do_pngs:
+        ### Parallel processing
+        p = q.Pool(_n_para)
+        p.map(generate_pngs, range(n_loop))
+        p.close()
+
     #%% Output loop info, move bad_loop_png
     loop_info_file = os.path.join(loopdir, 'loop_info.txt')
     f = open(loop_info_file, 'w')
@@ -619,16 +630,20 @@ def main(argv=None):
         badloopflag2 = '  '
         if ifgd12 in bad_ifg1 or ifgd23 in bad_ifg1 or ifgd13 in bad_ifg1:
             badloopflag1 = '*'
-            shutil.move(looppngfile, badlooppngfile)
+            if do_pngs:
+                shutil.move (looppngfile, badlooppngfile)
         elif ifgd12 in rm_ifg or ifgd23 in rm_ifg or ifgd13 in rm_ifg:
             badloopflag1 = '+'
-            shutil.move(looppngfile, badlooppngfile)
+            if do_pngs:
+                shutil.move(looppngfile, badlooppngfile)
         elif ifgd12 in noref_ifg or ifgd23 in noref_ifg or ifgd13 in noref_ifg:
             badloopflag2 = '**'
-            shutil.move(looppngfile, badlooppngfile)
+            if do_pngs:
+                shutil.move(looppngfile, badlooppngfile)
         elif ifgd12 in bad_ifg2 or ifgd23 in bad_ifg2 or ifgd13 in bad_ifg2:
             badloopflag2 = '***'
-            shutil.move(looppngfile, badlooppngfile)
+            if do_pngs:
+                shutil.move(looppngfile, badlooppngfile)
         elif ifgd12 in bad_ifg_cand_res or ifgd23 in bad_ifg_cand_res or ifgd13 in bad_ifg_cand_res:
             badloopflag1 = '/'
             if os.path.exists(looppngfile):
@@ -806,6 +821,50 @@ def main(argv=None):
     print('Output directory: {}\n'.format(os.path.relpath(tsadir)))
 
 
+def generate_pngs(i):
+    n_loop = Aloop.shape[0]
+
+    ### Read unw
+    unw12, unw23, unw13, ifgd12, ifgd23, ifgd13 = loop_lib.read_unw_loop_ph(Aloop[i, :], ifgdates, ifgdir, length, width)
+
+    ### Skip if bad ifg is included
+    if ifgd12 in bad_ifg or ifgd23 in bad_ifg or ifgd13 in bad_ifg:
+        return
+
+    ### Skip if noref ifg is included
+    if ifgd12 in noref_ifg or ifgd23 in noref_ifg or ifgd13 in noref_ifg:
+        return
+
+    ## Skip if no data in ref area in any unw. It is bad data.
+    ref_unw12 = np.nanmean(unw12[refy1:refy2, refx1:refx2])
+    ref_unw23 = np.nanmean(unw23[refy1:refy2, refx1:refx2])
+    ref_unw13 = np.nanmean(unw13[refy1:refy2, refx1:refx2])
+
+    ## Calculate loop phase taking into account ref phase
+    loop_ph = unw12+unw23-unw13-(ref_unw12+ref_unw23-ref_unw13)
+
+    ### Output png. If exist in old, move to save time
+    imd1 = ifgd12[:8]
+    imd2 = ifgd23[:8]
+    imd3 = ifgd23[-8:]
+    png = os.path.join(loop_pngdir, imd1+'_'+imd2+'_'+imd3+'_loop.png')
+    oldpng = os.path.join(loop_pngdir+'_old/', imd1+'_'+imd2+'_'+imd3+'_loop.png')
+    if os.path.exists(oldpng):
+        ### Just move from old png
+        shutil.move(oldpng, loop_pngdir)
+    else:
+        ### Make png. Take time a little.
+        titles4 = ['{} ({}*2pi/cycle)'.format(ifgd12, cycle),
+                   '{} ({}*2pi/cycle)'.format(ifgd23, cycle),
+                   '{} ({}*2pi/cycle)'.format(ifgd13, cycle),]
+        if multi_prime:
+            titles4.append('Loop (STD={:.2f}rad, bias={:.2f}rad)'.format(rms, bias))
+        else:
+            titles4.append('Loop phase (RMS={:.2f}rad)'.format(rms))
+
+        loop_lib.make_loop_png(unw12, unw23, unw13, loop_ph, png, titles4, cycle)
+
+
 #%%
 def loop_closure_1st_wrapper(i):
     '''
@@ -838,6 +897,8 @@ def loop_closure_1st_wrapper(i):
 
         rms = np.sqrt(np.nanmean(loop_ph**2))
 
+    '''
+    # moved to the last stage, i.e. after multi-prime and nullify corrections
     ### Output png. If exist in old, move to save time
     imd1 = ifgd12[:8]
     imd2 = ifgd23[:8]
@@ -858,6 +919,7 @@ def loop_closure_1st_wrapper(i):
             titles4.append('Loop phase (RMS={:.2f}rad)'.format(rms))
 
         loop_lib.make_loop_png(unw12, unw23, unw13, loop_ph, png, titles4, cycle)
+`   '''
 
     return rms
 
@@ -1014,7 +1076,8 @@ def nullify_unw(ifgd, mask):
     unwfile = os.path.join(ifgdir, ifgd, ifgd+'.unw')
     if os.path.exists(unwfile):
         unw = io_lib.read_img(unwfile, length, width)
-        unw[mask==False]=0
+        #unw[mask==False]=0  # should be ok but it appears as 0 in preview...
+        unw[mask == False] = np.nan
         unw.tofile(unwfile)
 
 

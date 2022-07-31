@@ -630,23 +630,23 @@ def main(argv=None):
         badloopflag2 = '  '
         if ifgd12 in bad_ifg1 or ifgd23 in bad_ifg1 or ifgd13 in bad_ifg1:
             badloopflag1 = '*'
-            if do_pngs:
-                shutil.move (looppngfile, badlooppngfile)
+            if do_pngs and os.path.exists(looppngfile):
+                shutil.move(looppngfile, badlooppngfile)
         elif ifgd12 in rm_ifg or ifgd23 in rm_ifg or ifgd13 in rm_ifg:
             badloopflag1 = '+'
-            if do_pngs:
+            if do_pngs and os.path.exists(looppngfile):
                 shutil.move(looppngfile, badlooppngfile)
         elif ifgd12 in noref_ifg or ifgd23 in noref_ifg or ifgd13 in noref_ifg:
             badloopflag2 = '**'
-            if do_pngs:
+            if do_pngs and os.path.exists(looppngfile):
                 shutil.move(looppngfile, badlooppngfile)
         elif ifgd12 in bad_ifg2 or ifgd23 in bad_ifg2 or ifgd13 in bad_ifg2:
             badloopflag2 = '***'
-            if do_pngs:
+            if do_pngs and os.path.exists(looppngfile):
                 shutil.move(looppngfile, badlooppngfile)
         elif ifgd12 in bad_ifg_cand_res or ifgd23 in bad_ifg_cand_res or ifgd13 in bad_ifg_cand_res:
             badloopflag1 = '/'
-            if os.path.exists(looppngfile):
+            if do_pngs and os.path.exists(looppngfile):
                 shutil.move(looppngfile, badloopcandpngfile)
 
         if type(loop_ph_rms_ifg2[i]) == np.float32:

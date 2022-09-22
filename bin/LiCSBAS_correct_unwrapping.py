@@ -56,7 +56,7 @@ with open(stats_file, 'w') as f:
     print("IFG,  RMS of residual in number of 2pi,  % pixels to correct, % pixels needing multiple corrections")
     f.write("IFG,  RMS of residual in number of 2pi,  % pixels to correct, % pixels needing multiple corrections \n")
 
-    for i in glob.glob('{}/{}/13resid/20150831_20151217.res'.format(args.frame_dir, args.ts_dir)) :
+    for i in glob.glob('{}/{}/13resid/*.res'.format(args.frame_dir, args.ts_dir)) :
         pair = os.path.basename(i).split('.')[0][-17:]
         print(pair)
         con = np.fromfile(os.path.join(args.frame_dir, args.unw_dir, pair, pair+'.conncomp'), dtype=np.int8).reshape((azimuth_lines, range_samples))
@@ -69,18 +69,18 @@ with open(stats_file, 'w') as f:
         res_rms = np.sqrt(np.nanmean(res_num_2pi**2))
 
         res_mode = copy.copy(res_integer)
-        for j in np.unique(con.flatten()):
-            if not np.isnan(res_integer[con == j][0]):
-                int_values = res_integer[con == j].astype(int)
-                mode = stats.mode(int_values)[0][0]
-                res_mode[con == j] = mode
+        for j in np.unique(con.flatten())[1:]:
+            component_values = res_integer[con == j]
+            int_values = component_values[~np.isnan(component_values)].astype(int)
+            mode = stats.mode(int_values)[0][0]
+            res_mode[con == j] = mode
 
         res_mode[np.isnan(res_integer)] = np.nan
 
         unw_corrected = unw - res_mode * 2 * np.pi
-        unw_corrected_by_int = unw - res_integer * 2 * np.pi
-        #unw_masked = copy.copy(unw)
-        #unw_masked[res_mode != 0] = np.nan
+        #unw_corrected_by_int = unw - res_integer * 2 * np.pi
+        unw_masked = copy.copy(unw)
+        unw_masked[res_integer != 0] = np.nan
 
         fig, ax = plt.subplots(3, 3, figsize=(9, 6))
         fig.suptitle(pair)
@@ -95,20 +95,20 @@ with open(stats_file, 'w') as f:
         unw_vmax = np.nanpercentile(unw, 99.5)
 
         im_unw = ax[0,0].imshow(unw, vmin=unw_vmin, vmax=unw_vmax, cmap=cm.RdBu)
-        im_unw = ax[0,1].imshow(unw_corrected_by_int, vmin=unw_vmin, vmax=unw_vmax, cmap=cm.RdBu)
+        im_unw = ax[0,1].imshow(unw_masked, vmin=unw_vmin, vmax=unw_vmax, cmap=cm.RdBu)
         im_unw = ax[0,2].imshow(unw_corrected, vmin=unw_vmin, vmax=unw_vmax, cmap=cm.RdBu)
         im_res = ax[1,0].imshow(res_num_2pi, vmin=-2, vmax=2, cmap=cm.RdBu)
         im_res = ax[1,1].imshow(res_integer, vmin=-2, vmax=2, cmap=cm.RdBu)
         im_res = ax[1,2].imshow(res_mode, vmin=-2, vmax=2, cmap=cm.RdBu)
         ax[1,0].scatter(ref_x_step12, ref_y_step12, c='r', s=10)
-        im_con = ax[2,0].imshow(con, cmap=cm.tab10)
+        im_con = ax[2,0].imshow(con, cmap=cm.tab10, interpolation='none')
 
         ax[0,0].set_title("Unw (rad)")
-        ax[0,1].set_title("Unw_corrected_by_int")
-        ax[0,2].set_title("Unw_corrected_by_comp")
+        ax[0,1].set_title("Unw_masked")
+        ax[0,2].set_title("Unw_corrected")
         ax[1,0].set_title("Residual/2pi (RMS={:.2f})".format(res_rms))
         ax[1,1].set_title("Nearest integer")
-        ax[1,2].set_title("Component mode integer")
+        ax[1,2].set_title("Component mode")
         ax[2,0].set_title("Components")
 
         fig.colorbar(im_unw, ax=ax[0,:], location='right', shrink=0.8)
@@ -131,13 +131,13 @@ with open(stats_file, 'w') as f:
         percentage_pixel_to_correct_by_2cycles = number_pixels_to_correct_by_2cycles / nonnan_pixel_number * 100
         ax[2, 1].set_title("{}% to correct, {}% >1 cycle".format(int(percentage_pixel_to_correct), int(percentage_pixel_to_correct_by_2cycles)))
 
-        plt.savefig('{}/{}/13resid/{}_unw_conn_nan_mode_res_hist.png'.format(args.frame_dir, args.ts_dir, pair), dpi=300)
+        plt.savefig('{}/{}/13resid/{}_unw_mask_mode.png'.format(args.frame_dir, args.ts_dir, pair), dpi=300)
         plt.close()
 
-        Path("{}/GEOCml10GACOS_corrected/{}/".format(args.frame_dir, pair)).mkdir(parents=True, exist_ok=True)
-        unw_corrected.flatten().tofile("{}/GEOCml10GACOS_corrected/{}/{}.unw".format(args.frame_dir, pair, pair))
+        Path("{}/{}_corrected/{}/".format(args.frame_dir, args.unw_dir, pair)).mkdir(parents=True, exist_ok=True)
+        unw_corrected.flatten().tofile("{}/{}_corrected/{}/{}.unw".format(args.frame_dir, args.unw_dir, pair, pair))
 
         print(pair,res_rms, "{:.2f}".format(percentage_pixel_to_correct), "{:.2f}".format(percentage_pixel_to_correct_by_2cycles) )
         f.write("{} {:.2f} {:.2f} {:.2f} \n".format(pair, res_rms, percentage_pixel_to_correct, percentage_pixel_to_correct_by_2cycles))
 
-        del con, unw, unw_corrected, unw_corrected_by_int, res_num_2pi, res_integer, nonnan_res_integer
+        del con, unw, unw_corrected, unw_masked, res_num_2pi, res_integer, nonnan_res_integer

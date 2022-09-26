@@ -209,7 +209,7 @@ if __name__ == "__main__":
     plot_lib.plot_network(ifgdates, bperp, bad_or_corrected_ifgs, pngfile)
 
     pngfile = os.path.join(netdir, 'network131_original_by_threshold.png')
-    plot_lib.plot_network(ifgdates, bperp, bad_or_corrected_ifgs, pngfile, plot_bad=False)
+    plot_lib.plot_network(good_ifg, bperp, [], pngfile)
 
     pngfile = os.path.join(netdir, 'network131_retained_with_correction_by_component_mode_and_nearest_interger.png')
     plot_lib.plot_network(retained_ifgs, bperp, corrected_ifgs, pngfile)

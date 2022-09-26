@@ -62,7 +62,7 @@ if __name__ == "__main__":
     parser.add_argument('-f', "--frame_dir", default="./", help="directory of LiCSBAS output of a particular frame")
     parser.add_argument('-g', '--GEOCml_dir', dest="unw_dir", default="GEOCml10GACOS", help="folder containing unw input")
     parser.add_argument('-t', '--ts_dir', dest="ts_dir", default="TS_GEOCml10GACOS", help="folder containing time series")
-    parser.add_argument('-r', '--rms_thresh', dest="thresh", default="0.2", help="threshold RMS residual per ifg as a fraction of 2 pi radian")
+    parser.add_argument('-r', '--rms_thresh', dest="thresh", default=0.3, help="threshold RMS residual per ifg as a fraction of 2 pi radian")
     args = parser.parse_args()
 
     speed_of_light = 299792458  # m/s
@@ -84,7 +84,7 @@ if __name__ == "__main__":
             if 'azimuth_lines' in line:
                 azimuth_lines = int(line.split()[1])
 
-    with open(os.path.join(infodir, '12ref.txt'), 'r') as f:
+    with open(os.path.join(infodir, '13ref.txt'), 'r') as f:
         for line in f.readlines():
             ref_x_step12 = int(line.split(":")[0])
             ref_y_step12 = int(line.split("/")[1].split(":")[0])
@@ -100,34 +100,63 @@ if __name__ == "__main__":
         res_mm = np.fromfile(i, dtype=np.float32).reshape((azimuth_lines, range_samples))
         res_rad = res_mm / coef_r2m
         res_num_2pi = res_rad / 2 / np.pi
+        counts, bins = np.histogram(res_num_2pi.flatten(), np.arange(-2.5, 2.6, 0.1))
+        peak = bins[counts.argmax()]+0.05
+        res_num_2pi = res_num_2pi - peak
         res_rms = np.sqrt(np.nanmean(res_num_2pi**2))
 
         if res_rms < args.thresh:
-            good_ifg.extend(pair)
-            print("RMS residual = {:.1f}, good...".format(res_rms))
+            good_ifg.append(pair)
+            print("RMS residual = {:.2f}, good...".format(res_rms))
             correct_unw_dir = os.path.join(args.frame_dir, args.unw_dir + "_corrected", pair)
             Path(correct_unw_dir).mkdir(parents=True, exist_ok=True)
 
-            # Link unw
+    #        # Link unw
             unwfile = os.path.join(args.frame_dir, args.unw_dir, pair, pair + '.unw')
             linkfile = os.path.join(correct_unw_dir, pair + '.unw')
             os.symlink(unwfile, linkfile)
+           
+            ## plot_res
+            plt.imshow(res_num_2pi, vmin=-2, vmax=2, cmap=cm.RdBu)
+            plt.title(pair+" RMS_res={:.2f}".format(res_rms))
+            plt.colorbar()
+            png_path = os.path.join(resdir, 'good_ifgs/')
+            Path(png_path).mkdir(parents=True, exist_ok=True)
+            plt.savefig(png_path+'{}.png'.format(pair), dpi=300)
+            plt.close()
 
-            del res_num_2pi, res_mm, res_rad, res_rms
+    #        del res_num_2pi, res_mm, res_rad, res_rms
 
         else:
-            print("RMS residual = {}, not good...".format(res_rms))
+            print("RMS residual = {:2f}, not good...".format(res_rms))
             res_integer = np.round(res_num_2pi)
-            rms_res_integer_corrected = np.sqrt(np.nanmean(res_num_2pi - res_integer))
-
+            rms_res_integer_corrected = np.sqrt(np.nanmean((res_num_2pi - res_integer)**2))
             if rms_res_integer_corrected > args.thresh:
-                bad_ifg_not_corrected.extend(pair)
-                print("Integer reduces rms residuals to {:.1f}, still above threshold of {:.1f}, discard...".format(rms_res_integer_corrected, args.thresh))
-                del res_num_2pi, res_mm, res_rad, res_rms, res_integer, rms_res_integer_corrected
+                bad_ifg_not_corrected.append(pair)
+                print("Integer reduces rms residuals to {:.2f}, still above threshold of {:.2f}, discard...".format(rms_res_integer_corrected, args.thresh))
+               
+                ## plot_res
+                fig, ax = plt.subplots(1, 2, figsize=(9, 6))
+                fig.suptitle(pair)
+                for x in ax:
+                    x.axes.xaxis.set_ticklabels([])
+                    x.axes.yaxis.set_ticklabels([])
+                im_res = ax[0].imshow(res_num_2pi, vmin=-2, vmax=2, cmap=cm.RdBu)
+                im_res = ax[1].imshow(res_integer, vmin=-2, vmax=2, cmap=cm.RdBu)
+                ax[0].scatter(ref_x_step12, ref_y_step12, c='r', s=10)
+                ax[0].set_title("Residual/2pi (RMS={:.2f})".format(res_rms))
+                ax[1].set_title("Nearest integer")
+                plt.colorbar(im_res, ax=ax, location='right', shrink=0.8)
+                png_path = os.path.join(resdir, 'bad_no_correction_ifgs/')
+                Path(png_path).mkdir(parents=True, exist_ok=True)
+                plt.savefig(png_path+'{}.png'.format(pair), dpi=300)
+                plt.close()
+     #           del res_num_2pi, res_mm, res_rad, res_rms, res_integer, rms_res_integer_corrected
 
             else:
-                print("Try correcting...")
+                # print("Try correcting...")
                 # read in unwrapped ifg and connected components
+                unwfile = os.path.join(args.frame_dir, args.unw_dir, pair, pair + '.unw')
                 con_file = os.path.join(args.frame_dir, args.unw_dir, pair, pair+'.conncomp')
                 unw = np.fromfile(unwfile, dtype=np.float32).reshape((azimuth_lines, range_samples))
                 con = np.fromfile(con_file, dtype=np.int8).reshape((azimuth_lines, range_samples))
@@ -142,28 +171,28 @@ if __name__ == "__main__":
                     res_mode[con == j] = mode
 
                 # check if component modes does a good job
-                rms_res_mode_corrected = np.sqrt(np.nanmean(res_num_2pi - res_mode))
+                rms_res_mode_corrected = np.sqrt(np.nanmean((res_num_2pi - res_mode)**2))
 
                 # if component mode is useful
                 if rms_res_mode_corrected < args.thresh:
-                    print("Component modes reduces rms residuals to {:.1f}, below threshold of {:.1f}, correcting by component mode...".format(rms_res_mode_corrected, args.thresh))
+                    print("Component modes reduces rms residuals to {:.2f}, below threshold of {:.2f}, correcting by component mode...".format(rms_res_mode_corrected, args.thresh))
                     unw_corrected = unw - res_mode * 2 * np.pi
                     correction_title = "Mode_corrected"
-                    ifg_corrected_by_mode.extend(pair)
+                    ifg_corrected_by_mode.append(pair)
                     Path(os.path.join(resdir, 'mode_correction/')).mkdir(parents=True, exist_ok=True)
                     png_path = os.path.join(resdir, 'mode_correction/{}.png'.format(pair))
-                    # png_path ='{}/{}/13resid/mode_correction/{}.png'.format(args.frame_dir, args.ts_dir, pair)
-                    # Path('{}/{}/13resid/mode_correction/'.format(args.frame_dir, args.ts_dir)).mkdir(parents=True, exist_ok=True)
 
                 else:  # if component mode is not useful
-                    print("Component modes reduces rms residuals to {:.1f}, above threshold of {:.1f}...".format(rms_res_mode_corrected, args.thresh))
-                    print("Integer reduces rms residuals to {:.1f}, correcting by nearest integer...".format(rms_res_integer_corrected))
+                    print("Component modes reduces rms residuals to {:.2f}, above threshold of {:.2f}...".format(rms_res_mode_corrected, args.thresh))
+                    print("Integer reduces rms residuals to {:.2f}, correcting by nearest integer...".format(rms_res_integer_corrected))
                     unw_corrected = unw - res_integer * 2 * np.pi
                     correction_title = "Integer_corrected"
-                    ifg_corrected_by_integer.extend(pair)
+                    ifg_corrected_by_integer.append(pair)
                     Path(os.path.join(resdir, 'integer_correction/')).mkdir(parents=True, exist_ok=True)
                     png_path = os.path.join(resdir, 'integer_correction/{}.png'.format(pair))
 
+                 
+                plot_correction()
 
                 # save the corrected unw
                 Path("{}/{}_corrected/{}/".format(args.frame_dir, args.unw_dir, pair)).mkdir(parents=True, exist_ok=True)
@@ -208,15 +237,15 @@ if __name__ == "__main__":
     pngfile = os.path.join(netdir, 'network131_original_with_threshold.png')
     plot_lib.plot_network(ifgdates, bperp, bad_or_corrected_ifgs, pngfile)
 
-    pngfile = os.path.join(netdir, 'network131_original_by_threshold.png')
-    plot_lib.plot_network(good_ifg, bperp, [], pngfile)
+   # pngfile = os.path.join(netdir, 'network131_original_by_threshold.png')
+   # plot_lib.plot_network(good_ifg, bperp, [], pngfile)
 
-    pngfile = os.path.join(netdir, 'network131_retained_with_correction_by_component_mode_and_nearest_interger.png')
-    plot_lib.plot_network(retained_ifgs, bperp, corrected_ifgs, pngfile)
+   # pngfile = os.path.join(netdir, 'network131_retained_with_correction_by_component_mode_and_nearest_interger.png')
+   # plot_lib.plot_network(retained_ifgs, bperp, corrected_ifgs, pngfile)
 
-    pngfile = os.path.join(netdir, 'network131_retained_with_correction_by_component_mode_only.png')
-    plot_lib.plot_network(retained_if_only_by_mode, bperp, ifg_corrected_by_mode, pngfile)
+   # pngfile = os.path.join(netdir, 'network131_retained_with_correction_by_component_mode_only.png')
+   # plot_lib.plot_network(retained_if_only_by_mode, bperp, ifg_corrected_by_mode, pngfile)
 
-    pngfile = os.path.join(netdir, 'network131_retained.png')
-    plot_lib.plot_network(retained_ifgs, bperp, [], pngfile, plot_bad=False)
+   # pngfile = os.path.join(netdir, 'network131_retained.png')
+   # plot_lib.plot_network(retained_ifgs, bperp, [], pngfile, plot_bad=False)
 

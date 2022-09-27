@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 #################
-# Fit a gaussian distribution to the histogram of residuals in rad
+# Set 80 percentile of RMS ifg residuals in 2pi radian as the threshold
 # Determine the residual threshold for further ifgs to be removed
 # Written by Qi Ou, University Leeds, 22 Sep 2022
 #################
@@ -15,14 +15,6 @@ import argparse
 import LiCSBAS_io_lib as io_lib
 import LiCSBAS_tools_lib as tools_lib
 import LiCSBAS_plot_lib as plot_lib
-from scipy.optimize import curve_fit
-
-
-# Define the Gaussian function
-def Gauss(x, a, b, c):
-    """ a = height, b = mean (mu), c = sigma """
-    y = a*np.exp(-(x-b)**2/(2*c**2))
-    return y
 
 
 if __name__ == "__main__":
@@ -44,9 +36,19 @@ if __name__ == "__main__":
     infodir = os.path.join(tsadir, 'info')
     netdir = os.path.join(tsadir, 'network')
     resdir = os.path.join(tsadir, '13resid')
-    
+
+    with open(os.path.join(infodir, '13parameters.txt'), 'r') as f:
+        for line in f.readlines():
+            if 'range_samples' in line:
+                range_samples = int(line.split()[1])
+            if 'azimuth_lines' in line:
+                azimuth_lines = int(line.split()[1])
+
+    #%% Start finding low residual ref point
+    sumsq_de_peaked_res = np.zeros((azimuth_lines, range_samples), dtype=np.float32)
+
     print('Reading residual maps from {}'.format(resdir))
-    restxtfile = os.path.join(infodir,'13resid_2pi.txt')
+    restxtfile = os.path.join(infodir,'131resid_2pi.txt')
     if os.path.exists(restxtfile): os.remove(restxtfile)
     with open(restxtfile, "w") as f:
         print('# RMS of residual (in number of 2pi)', file=f)
@@ -78,3 +80,28 @@ if __name__ == "__main__":
         print('RMS_80%: {:5.2f}'.format(threshold), file=f)
         print('IFG RMS res, peak = {:2f}, 80% = {:2f}'.format(peak_ifg_res_rms, threshold))
 
+        # calculate rms de-peaked residuals
+        for i in range(len(res_rms_list)):
+            sumsq_de_peaked_res = sumsq_de_peaked_res + res_num_2pi.reshape((azimuth_lines, range_samples))
+
+    # calculate rms de-peaked residuals
+    rms_de_peaked_res = np.sqrt(sumsq_de_peaked_res/len(res_rms_list))
+
+    ### Mask residual by minimum n_gap
+    n_gap = io_lib.read_img(os.path.join(resultsdir, 'n_gap'), azimuth_lines, range_samples)
+    min_n_gap = np.nanmin(n_gap)
+    mask_n_gap = np.float32(n_gap==min_n_gap)
+    mask_n_gap[mask_n_gap == 0] = np.nan
+    rms_de_peaked_res = rms_de_peaked_res*mask_n_gap
+
+    ### Find stable reference
+    min_rms = np.nanmin(rms_de_peaked_res)
+    refy1s, refx1s = np.where(rms_de_peaked_res == min_rms)
+    refy1s, refx1s = refy1s[0], refx1s[0]  ## Only first index
+    refy2s, refx2s = refy1s+1, refx1s+1
+    print('Selected ref: {}:{}/{}:{}'.format(refx1s, refx2s, refy1s, refy2s), flush=True)
+
+    ### Save ref
+    refsfile = os.path.join(infodir, '131ref_de-peaked.txt')
+    with open(refsfile, 'w') as f:
+        print('{}:{}/{}:{}'.format(refx1s, refx2s, refy1s, refy2s), file=f)

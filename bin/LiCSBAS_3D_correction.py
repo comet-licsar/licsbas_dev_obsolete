@@ -5,8 +5,8 @@
 # plot connected components output by SNAPHU,
 # plot residual in radian divided by 2pi and rounded to the nearest integer,
 # plot a histogram of residual in radian divided by 2pi
-# correct each component by the mode of nearest integer in that component
-# run from inside the 13resid folder of LiCSBAS output with "../info/slc.mli.par" pointing to a text file containing range samples and azimuth lines
+# correct each component by the mode of nearest integer in that component or by nearest integer
+# run from frame folder of LiCSBAS output
 # Written by Qi Ou, University Leeds, 22 Sep 2022
 #################
 
@@ -111,7 +111,7 @@ if __name__ == "__main__":
             correct_unw_dir = os.path.join(args.frame_dir, args.unw_dir + "_corrected", pair)
             Path(correct_unw_dir).mkdir(parents=True, exist_ok=True)
 
-    #        # Link unw
+            # Link unw
             unwfile = os.path.join(args.frame_dir, args.unw_dir, pair, pair + '.unw')
             linkfile = os.path.join(correct_unw_dir, pair + '.unw')
             os.symlink(unwfile, linkfile)
@@ -125,7 +125,7 @@ if __name__ == "__main__":
             plt.savefig(png_path+'{}.png'.format(pair), dpi=300)
             plt.close()
 
-    #        del res_num_2pi, res_mm, res_rad, res_rms
+            del res_num_2pi, res_mm, res_rad, res_rms
 
         else:
             print("RMS residual = {:2f}, not good...".format(res_rms))
@@ -151,10 +151,9 @@ if __name__ == "__main__":
                 Path(png_path).mkdir(parents=True, exist_ok=True)
                 plt.savefig(png_path+'{}.png'.format(pair), dpi=300)
                 plt.close()
-     #           del res_num_2pi, res_mm, res_rad, res_rms, res_integer, rms_res_integer_corrected
+                del res_num_2pi, res_mm, res_rad, res_rms, res_integer, rms_res_integer_corrected
 
             else:
-                # print("Try correcting...")
                 # read in unwrapped ifg and connected components
                 unwfile = os.path.join(args.frame_dir, args.unw_dir, pair, pair + '.unw')
                 con_file = os.path.join(args.frame_dir, args.unw_dir, pair, pair+'.conncomp')
@@ -191,7 +190,6 @@ if __name__ == "__main__":
                     Path(os.path.join(resdir, 'integer_correction/')).mkdir(parents=True, exist_ok=True)
                     png_path = os.path.join(resdir, 'integer_correction/{}.png'.format(pair))
 
-                 
                 plot_correction()
 
                 # save the corrected unw
@@ -234,18 +232,18 @@ if __name__ == "__main__":
     else: #dummy
         bperp = np.random.random(n_im).tolist()
 
-    pngfile = os.path.join(netdir, 'network131_original_with_threshold.png')
-    plot_lib.plot_network(ifgdates, bperp, bad_or_corrected_ifgs, pngfile)
+    # pngfile = os.path.join(netdir, 'network131_original_with_threshold.png')
+    # plot_lib.plot_network(ifgdates, bperp, bad_or_corrected_ifgs, pngfile)
 
-   # pngfile = os.path.join(netdir, 'network131_original_by_threshold.png')
-   # plot_lib.plot_network(good_ifg, bperp, [], pngfile)
+    pngfile = os.path.join(netdir, 'network131_original_by_threshold.png')
+    plot_lib.plot_network(good_ifg, bperp, [], pngfile)
 
-   # pngfile = os.path.join(netdir, 'network131_retained_with_correction_by_component_mode_and_nearest_interger.png')
-   # plot_lib.plot_network(retained_ifgs, bperp, corrected_ifgs, pngfile)
+    pngfile = os.path.join(netdir, 'network131_retained_with_correction_by_component_mode_and_nearest_interger.png')
+    plot_lib.plot_network(retained_ifgs, bperp, corrected_ifgs, pngfile)
 
-   # pngfile = os.path.join(netdir, 'network131_retained_with_correction_by_component_mode_only.png')
-   # plot_lib.plot_network(retained_if_only_by_mode, bperp, ifg_corrected_by_mode, pngfile)
+    # pngfile = os.path.join(netdir, 'network131_retained_with_correction_by_component_mode_only.png')
+    # plot_lib.plot_network(retained_if_only_by_mode, bperp, ifg_corrected_by_mode, pngfile)
 
-   # pngfile = os.path.join(netdir, 'network131_retained.png')
-   # plot_lib.plot_network(retained_ifgs, bperp, [], pngfile, plot_bad=False)
+    pngfile = os.path.join(netdir, 'network131_retained.png')
+    plot_lib.plot_network(retained_ifgs, bperp, [], pngfile)
 

@@ -41,7 +41,7 @@ def plot_correction():
     im_res = ax[1, 0].imshow(res_num_2pi, vmin=-2, vmax=2, cmap=cm.RdBu)
     im_res = ax[1, 1].imshow(res_integer, vmin=-2, vmax=2, cmap=cm.RdBu)
     im_res = ax[1, 2].imshow(res_mode, vmin=-2, vmax=2, cmap=cm.RdBu)
-    ax[1, 0].scatter(ref_x_step12, ref_y_step12, c='r', s=10)
+    ax[1, 0].scatter(ref_x, ref_y, c='r', s=10)
     ax[0, 0].set_title("Components")
     ax[0, 1].set_title("Unw (rad)")
     ax[0, 2].set_title(correction_title)
@@ -62,7 +62,7 @@ if __name__ == "__main__":
     parser.add_argument('-f', "--frame_dir", default="./", help="directory of LiCSBAS output of a particular frame")
     parser.add_argument('-g', '--GEOCml_dir', dest="unw_dir", default="GEOCml10GACOS", help="folder containing unw input")
     parser.add_argument('-t', '--ts_dir', dest="ts_dir", default="TS_GEOCml10GACOS", help="folder containing time series")
-    parser.add_argument('-r', '--rms_thresh', dest="thresh", default=0.3, help="threshold RMS residual per ifg as a fraction of 2 pi radian")
+    parser.add_argument('-r', '--rms_thresh', dest="thresh", default=0.5, help="threshold RMS residual per ifg as a fraction of 2 pi radian, used if info/131resid_2pi.txt doesn't exist")
     args = parser.parse_args()
 
     speed_of_light = 299792458  # m/s
@@ -84,10 +84,17 @@ if __name__ == "__main__":
             if 'azimuth_lines' in line:
                 azimuth_lines = int(line.split()[1])
 
-    with open(os.path.join(infodir, '13ref.txt'), 'r') as f:
+    resid_threshold_file = os.path.join(infodir, '131resid_2pi.txt')
+    if os.path.exists(resid_threshold_file):
+        thresh = int(io_lib.get_param_par(resid_threshold_file, 'RMS_80%'))
+    else:
+        thresh = args.thresh
+    print("Correction threshold = {:2f}".format(thresh))
+
+    with open(os.path.join(infodir, '131ref_de-peaked.txt'), 'r') as f:
         for line in f.readlines():
-            ref_x_step12 = int(line.split(":")[0])
-            ref_y_step12 = int(line.split("/")[1].split(":")[0])
+            ref_x = int(line.split(":")[0])
+            ref_y = int(line.split("/")[1].split(":")[0])
 
     good_ifg = []
     ifg_corrected_by_mode = []
@@ -105,7 +112,7 @@ if __name__ == "__main__":
         res_num_2pi = res_num_2pi - peak
         res_rms = np.sqrt(np.nanmean(res_num_2pi**2))
 
-        if res_rms < args.thresh:
+        if res_rms < thresh:
             good_ifg.append(pair)
             print("RMS residual = {:.2f}, good...".format(res_rms))
             correct_unw_dir = os.path.join(args.frame_dir, args.unw_dir + "_corrected", pair)
@@ -131,7 +138,7 @@ if __name__ == "__main__":
             print("RMS residual = {:2f}, not good...".format(res_rms))
             res_integer = np.round(res_num_2pi)
             rms_res_integer_corrected = np.sqrt(np.nanmean((res_num_2pi - res_integer)**2))
-            if rms_res_integer_corrected > args.thresh:
+            if rms_res_integer_corrected > thresh:
                 bad_ifg_not_corrected.append(pair)
                 print("Integer reduces rms residuals to {:.2f}, still above threshold of {:.2f}, discard...".format(rms_res_integer_corrected, args.thresh))
                
@@ -143,7 +150,7 @@ if __name__ == "__main__":
                     x.axes.yaxis.set_ticklabels([])
                 im_res = ax[0].imshow(res_num_2pi, vmin=-2, vmax=2, cmap=cm.RdBu)
                 im_res = ax[1].imshow(res_integer, vmin=-2, vmax=2, cmap=cm.RdBu)
-                ax[0].scatter(ref_x_step12, ref_y_step12, c='r', s=10)
+                ax[0].scatter(ref_x, ref_y, c='r', s=10)
                 ax[0].set_title("Residual/2pi (RMS={:.2f})".format(res_rms))
                 ax[1].set_title("Nearest integer")
                 plt.colorbar(im_res, ax=ax, location='right', shrink=0.8)
@@ -173,7 +180,7 @@ if __name__ == "__main__":
                 rms_res_mode_corrected = np.sqrt(np.nanmean((res_num_2pi - res_mode)**2))
 
                 # if component mode is useful
-                if rms_res_mode_corrected < args.thresh:
+                if rms_res_mode_corrected < thresh:
                     print("Component modes reduces rms residuals to {:.2f}, below threshold of {:.2f}, correcting by component mode...".format(rms_res_mode_corrected, args.thresh))
                     unw_corrected = unw - res_mode * 2 * np.pi
                     correction_title = "Mode_corrected"
@@ -198,19 +205,27 @@ if __name__ == "__main__":
                 del con, unw, unw_corrected, res_num_2pi, res_integer, res_mm, res_rad, res_rms, correction_title
 
     #%% save ifg lists to text files.
-    with open(os.path.join(infodir, '13bad_ifg.txt'), 'w') as f:
+    bad_ifg_file = os.path.join(infodir, '132bad_ifg.txt')
+    if os.path.exists(bad_ifg_file): os.remove(bad_ifg_file)
+    with open(bad_ifg_file, 'w') as f:
         for i in bad_ifg_not_corrected:
             print('{}'.format(i), file=f)
 
-    with open(os.path.join(infodir, '13corrected_by_component_mode_ifg.txt'), 'w') as f:
+    mode_ifg_file = os.path.join(infodir, '132corrected_by_component_mode_ifg.txt')
+    if os.path.exists(mode_ifg_file): os.remove(mode_ifg_file)
+    with open(mode_ifg_file, 'w') as f:
         for i in ifg_corrected_by_mode:
             print('{}'.format(i), file=f)
 
-    with open(os.path.join(infodir, '13corrected_by_nearest_integer_ifg.txt'), 'w') as f:
+    nearest_ifg_file = os.path.join(infodir, '132corrected_by_nearest_integer_ifg.txt')
+    if os.path.exists(nearest_ifg_file): os.remove(nearest_ifg_file)
+    with open(nearest_ifg_file, 'w') as f:
         for i in ifg_corrected_by_integer:
             print('{}'.format(i), file=f)
 
-    with open(os.path.join(infodir, '13good_ifg_uncorrected.txt'), 'w') as f:
+    good_ifg_file = os.path.join(infodir, '132good_ifg_uncorrected.txt')
+    if os.path.exists(good_ifg_file): os.remove(good_ifg_file)
+    with open(good_ifg_file, 'w') as f:
         for i in good_ifg:
             print('{}'.format(i), file=f)
 
@@ -235,15 +250,15 @@ if __name__ == "__main__":
     # pngfile = os.path.join(netdir, 'network131_original_with_threshold.png')
     # plot_lib.plot_network(ifgdates, bperp, bad_or_corrected_ifgs, pngfile)
 
-    pngfile = os.path.join(netdir, 'network131_original_by_threshold.png')
+    pngfile = os.path.join(netdir, 'network132_original_by_threshold.png')
     plot_lib.plot_network(good_ifg, bperp, [], pngfile)
 
-    pngfile = os.path.join(netdir, 'network131_retained_with_correction_by_component_mode_and_nearest_interger.png')
+    pngfile = os.path.join(netdir, 'network132_retained_with_correction_by_component_mode_and_nearest_interger.png')
     plot_lib.plot_network(retained_ifgs, bperp, corrected_ifgs, pngfile)
 
     # pngfile = os.path.join(netdir, 'network131_retained_with_correction_by_component_mode_only.png')
     # plot_lib.plot_network(retained_if_only_by_mode, bperp, ifg_corrected_by_mode, pngfile)
 
-    pngfile = os.path.join(netdir, 'network131_retained.png')
+    pngfile = os.path.join(netdir, 'network132_retained.png')
     plot_lib.plot_network(retained_ifgs, bperp, [], pngfile)
 

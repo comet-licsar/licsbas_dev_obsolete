@@ -31,7 +31,6 @@ if __name__ == "__main__":
     parser.add_argument('-f', "--frame_dir", default="./", help="directory of LiCSBAS output of a particular frame")
     parser.add_argument('-g', '--GEOCml_dir', dest="unw_dir", default="GEOCml10GACOS", help="folder containing unw input")
     parser.add_argument('-t', '--ts_dir', dest="ts_dir", default="TS_GEOCml10GACOS", help="folder containing time series")
-    parser.add_argument('-r', '--rms_thresh', dest="thresh", default=0.3, help="threshold RMS residual per ifg as a fraction of 2 pi radian")
     args = parser.parse_args()
 
     speed_of_light = 299792458  # m/s
@@ -45,7 +44,8 @@ if __name__ == "__main__":
     infodir = os.path.join(tsadir, 'info')
     netdir = os.path.join(tsadir, 'network')
     resdir = os.path.join(tsadir, '13resid')
-
+    
+    print('Reading residual maps from {}'.format(resdir))
     restxtfile = os.path.join(infodir,'13resid_2pi.txt')
     if os.path.exists(restxtfile): os.remove(restxtfile)
     with open(restxtfile, "w") as f:
@@ -66,19 +66,15 @@ if __name__ == "__main__":
 
             print('{} {:5.2f}'.format(pair, res_rms), file=f)
 
-        count_ifg_res_rms, bin_edges, patches = plt.hist(res_rms_list, np.arange(0, 2, 0.1))
-        bin_centers = bin_edges[1:] - bin_edges[:-1]
-        parameters, covariance = curve_fit(Gauss, bin_centers, count_ifg_res_rms)
-        fit_height = parameters[0]
-        fit_mu = parameters[1]
-        fit_sigma = parameters[2]
-        fit_y = Gauss(bin_centers, fit_height, fit_mu, fit_sigma)
-        threshold = fit_mu+fit_sigma
-        plt.plot(bin_centers, fit_y, '-')
-        plt.vline(x=threshold, color='r')
-        plt.title("Residual, thresh = {:2f}".format(threshold))
-        plt.savefig(resdir+"RMS_ifg_res_hist.png", dpi=300)
-
-        print('RMS_threshold: {:5.2f}'.format(threshold), file=f)
-
+        count_ifg_res_rms, bin_edges, patches = plt.hist(res_rms_list, np.arange(0, 3, 0.1))
+        peak_ifg_res_rms = bin_edges[count_ifg_res_rms.argmax()]+0.05
+        threshold = np.nanpercentile(res_rms_list, 80)
+        plt.axvline(x=peak_ifg_res_rms, color='r')
+        plt.axvline(x=threshold, color='r')
+        plt.title("Residual, peak = {:2f}, 80% = {:2f}".format(peak_ifg_res_rms, threshold))
+        plt.savefig(infodir+"/RMS_ifg_res_hist.png", dpi=300)
+        
+        print('RMS_peak: {:5.2f}'.format(peak_ifg_res_rms), file=f)
+        print('RMS_80%: {:5.2f}'.format(threshold), file=f)
+        print('IFG RMS res, peak = {:2f}, 80% = {:2f}'.format(peak_ifg_res_rms, threshold))
 

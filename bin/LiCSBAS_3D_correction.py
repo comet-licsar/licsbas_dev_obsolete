@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 
 #################
-# plot unw with non-cyclic linear colour bar,
-# plot connected components output by SNAPHU,
-# plot residual in radian divided by 2pi and rounded to the nearest integer,
-# plot a histogram of residual in radian divided by 2pi
-# correct each component by the mode of nearest integer in that component or by nearest integer
+# 1. for each .res file, deduct the pixel residual histogram peak to unbias the residual map
+# 2. if below threshold, good ifg
+# 3. if above threshold, if remaining residual after integer correction still above threshold, bad ifg
+# 4. if worth correcting, first try correction by component mode based on connected components from SNAPHU and nearest integer of 2pi from the residuals
+# 5. if doesn't go below threshold, correcting by nearest integer
 # run from frame folder of LiCSBAS output
 # Written by Qi Ou, University Leeds, 22 Sep 2022
 #################
@@ -25,6 +25,7 @@ from mpl_toolkits.axes_grid1.axes_divider import make_axes_locatable
 import LiCSBAS_io_lib as io_lib
 import LiCSBAS_tools_lib as tools_lib
 import LiCSBAS_plot_lib as plot_lib
+import shutil
 
 
 def plot_correction():
@@ -96,6 +97,28 @@ if __name__ == "__main__":
             ref_x = int(line.split(":")[0])
             ref_y = int(line.split("/")[1].split(":")[0])
 
+    # set up png directories
+    good_png_dir = os.path.join(resdir, 'good_ifg_no_correction/')
+    if os.path.exists(good_png_dir): shutil.rmtree(good_png_dir)
+    Path(good_png_dir).mkdir(parents=True, exist_ok=True)
+
+    bad_png_dir = os.path.join(resdir, 'bad_ifg_no_correction/')
+    if os.path.exists(bad_png_dir): shutil.rmtree(bad_png_dir)
+    Path(bad_png_dir).mkdir(parents=True, exist_ok=True)
+
+    integer_png_dir = os.path.join(resdir, 'integer_correction/')
+    if os.path.exists(integer_png_dir): shutil.rmtree(integer_png_dir)
+    Path(integer_png_dir).mkdir(parents=True, exist_ok=True)
+
+    mode_png_dir = os.path.join(resdir, 'mode_correction/')
+    if os.path.exists(mode_png_dir): shutil.rmtree(mode_png_dir)
+    Path(mode_png_dir).mkdir(parents=True, exist_ok=True)
+
+    corrected_unw_dir = os.path.join(args.frame_dir, args.unw_dir + "_corrected")
+    if os.path.exists(corrected_unw_dir): shutil.rmtree(corrected_unw_dir)
+    Path(corrected_unw_dir).mkdir(parents=True, exist_ok=True)
+
+    # set up empty ifg lists
     good_ifg = []
     ifg_corrected_by_mode = []
     ifg_corrected_by_integer = []
@@ -128,8 +151,7 @@ if __name__ == "__main__":
             plt.title(pair+" RMS_res={:.2f}".format(res_rms))
             plt.colorbar()
             png_path = os.path.join(resdir, 'good_ifgs/')
-            Path(png_path).mkdir(parents=True, exist_ok=True)
-            plt.savefig(png_path+'{}.png'.format(pair), dpi=300)
+            plt.savefig(good_png_dir+'{}.png'.format(pair), dpi=300)
             plt.close()
 
             del res_num_2pi, res_mm, res_rad, res_rms
@@ -154,9 +176,7 @@ if __name__ == "__main__":
                 ax[0].set_title("Residual/2pi (RMS={:.2f})".format(res_rms))
                 ax[1].set_title("Nearest integer")
                 plt.colorbar(im_res, ax=ax, location='right', shrink=0.8)
-                png_path = os.path.join(resdir, 'bad_no_correction_ifgs/')
-                Path(png_path).mkdir(parents=True, exist_ok=True)
-                plt.savefig(png_path+'{}.png'.format(pair), dpi=300)
+                plt.savefig(bad_png_dir+'{}.png'.format(pair), dpi=300)
                 plt.close()
                 del res_num_2pi, res_mm, res_rad, res_rms, res_integer, rms_res_integer_corrected
 
@@ -185,8 +205,7 @@ if __name__ == "__main__":
                     unw_corrected = unw - res_mode * 2 * np.pi
                     correction_title = "Mode_corrected"
                     ifg_corrected_by_mode.append(pair)
-                    Path(os.path.join(resdir, 'mode_correction/')).mkdir(parents=True, exist_ok=True)
-                    png_path = os.path.join(resdir, 'mode_correction/{}.png'.format(pair))
+                    png_path = os.path.join(mode_png_dir, '{}.png'.format(pair))
 
                 else:  # if component mode is not useful
                     print("Component modes reduces rms residuals to {:.2f}, above threshold of {:.2f}...".format(rms_res_mode_corrected, args.thresh))
@@ -194,8 +213,7 @@ if __name__ == "__main__":
                     unw_corrected = unw - res_integer * 2 * np.pi
                     correction_title = "Integer_corrected"
                     ifg_corrected_by_integer.append(pair)
-                    Path(os.path.join(resdir, 'integer_correction/')).mkdir(parents=True, exist_ok=True)
-                    png_path = os.path.join(resdir, 'integer_correction/{}.png'.format(pair))
+                    png_path = os.path.join(integer_png_dir, '{}.png'.format(pair))
 
                 plot_correction()
 
@@ -231,12 +249,9 @@ if __name__ == "__main__":
 
     #%% Read date, network information and size
     # ### Get dates
-    ifgdates = good_ifg + ifg_corrected_by_mode + ifg_corrected_by_integer + bad_ifg_not_corrected
-    retained_ifgs = good_ifg + ifg_corrected_by_mode + ifg_corrected_by_integer
-    retained_if_only_by_mode = good_ifg + ifg_corrected_by_mode
-    corrected_ifgs = ifg_corrected_by_mode + ifg_corrected_by_integer
-    bad_or_corrected_ifgs = ifg_corrected_by_mode + ifg_corrected_by_integer + bad_ifg_not_corrected
-    imdates = tools_lib.ifgdates2imdates(ifgdates)
+    retained_ifgs = (good_ifg + ifg_corrected_by_mode + ifg_corrected_by_integer).sort()
+    corrected_ifgs = (ifg_corrected_by_mode + ifg_corrected_by_integer).sort()
+    imdates = tools_lib.ifgdates2imdates(retained_ifgs)
     n_im = len(imdates)
 
     #%% Plot network
@@ -247,18 +262,12 @@ if __name__ == "__main__":
     else: #dummy
         bperp = np.random.random(n_im).tolist()
 
-    # pngfile = os.path.join(netdir, 'network131_original_with_threshold.png')
-    # plot_lib.plot_network(ifgdates, bperp, bad_or_corrected_ifgs, pngfile)
+    pngfile = os.path.join(netdir, 'network132_only_good.png')
+    plot_lib.plot_network(retained_ifgs, bperp, corrected_ifgs, pngfile, plot_bad=False)
 
-    pngfile = os.path.join(netdir, 'network132_original_by_threshold.png')
-    plot_lib.plot_network(good_ifg, bperp, [], pngfile)
-
-    pngfile = os.path.join(netdir, 'network132_retained_with_correction_by_component_mode_and_nearest_interger.png')
+    pngfile = os.path.join(netdir, 'network131_with_corrected.png')
     plot_lib.plot_network(retained_ifgs, bperp, corrected_ifgs, pngfile)
 
-    # pngfile = os.path.join(netdir, 'network131_retained_with_correction_by_component_mode_only.png')
-    # plot_lib.plot_network(retained_if_only_by_mode, bperp, ifg_corrected_by_mode, pngfile)
-
-    pngfile = os.path.join(netdir, 'network132_retained.png')
+    pngfile = os.path.join(netdir, 'network132_all.png')
     plot_lib.plot_network(retained_ifgs, bperp, [], pngfile)
 

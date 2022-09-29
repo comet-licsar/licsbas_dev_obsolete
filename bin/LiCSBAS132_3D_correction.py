@@ -29,19 +29,19 @@ import shutil
 
 
 def plot_correction():
-    fig, ax = plt.subplots(2, 3, figsize=(9, 6))
+    fig, ax = plt.subplots(2, 3, figsize=(9, 5))
     fig.suptitle(pair)
     for x in ax[:, :].flatten():
         x.axes.xaxis.set_ticklabels([])
         x.axes.yaxis.set_ticklabels([])
     unw_vmin = np.nanpercentile(unw, 0.5)
     unw_vmax = np.nanpercentile(unw, 99.5)
-    im_con = ax[0, 0].imshow(con, cmap=cm.tab10, interpolation='none')
-    im_unw = ax[0, 1].imshow(unw, vmin=unw_vmin, vmax=unw_vmax, cmap=cm.RdBu)
-    im_unw = ax[0, 2].imshow(unw_corrected, vmin=unw_vmin, vmax=unw_vmax, cmap=cm.RdBu)
-    im_res = ax[1, 0].imshow(res_num_2pi, vmin=-2, vmax=2, cmap=cm.RdBu)
-    im_res = ax[1, 1].imshow(res_integer, vmin=-2, vmax=2, cmap=cm.RdBu)
-    im_res = ax[1, 2].imshow(res_mode, vmin=-2, vmax=2, cmap=cm.RdBu)
+    im_con = ax[0, 0].imshow(con, cmap=cm.tab10, interpolation='nearest')
+    im_unw = ax[0, 1].imshow(unw, vmin=unw_vmin, vmax=unw_vmax, cmap=cm.RdBu, interpolation='nearest')
+    im_unw = ax[0, 2].imshow(unw_corrected, vmin=unw_vmin, vmax=unw_vmax, cmap=cm.RdBu, interpolation='nearest')
+    im_res = ax[1, 0].imshow(res_num_2pi, vmin=-2, vmax=2, cmap=cm.RdBu, interpolation='nearest')
+    im_res = ax[1, 1].imshow(res_integer, vmin=-2, vmax=2, cmap=cm.RdBu, interpolation='nearest')
+    im_res = ax[1, 2].imshow(res_mode, vmin=-2, vmax=2, cmap=cm.RdBu, interpolation='nearest')
     ax[1, 0].scatter(ref_x, ref_y, c='r', s=10)
     ax[0, 0].set_title("Components")
     ax[0, 1].set_title("Unw (rad)")
@@ -52,8 +52,7 @@ def plot_correction():
     fig.colorbar(im_con, ax=ax[0, 0], location='right', shrink=0.8)
     fig.colorbar(im_unw, ax=ax[0, 1:], location='right', shrink=0.8)
     fig.colorbar(im_res, ax=ax[1, :], location='right', shrink=0.8)
-
-    plt.savefig(png_path, dpi=300)
+    plt.savefig(png_path, dpi=300, bbox_inches='tight')
     plt.close()
 
 
@@ -87,7 +86,7 @@ if __name__ == "__main__":
 
     resid_threshold_file = os.path.join(infodir, '131resid_2pi.txt')
     if os.path.exists(resid_threshold_file):
-        thresh = int(io_lib.get_param_par(resid_threshold_file, 'RMS_80%'))
+        thresh = float(io_lib.get_param_par(resid_threshold_file, 'RMS_80%'))
     else:
         thresh = args.thresh
     print("Correction threshold = {:2f}".format(thresh))
@@ -147,11 +146,12 @@ if __name__ == "__main__":
             os.symlink(unwfile, linkfile)
            
             ## plot_res
-            plt.imshow(res_num_2pi, vmin=-2, vmax=2, cmap=cm.RdBu)
+            plt.imshow(res_num_2pi, vmin=-2, vmax=2, cmap=cm.RdBu, interpolation='nearest')
             plt.title(pair+" RMS_res={:.2f}".format(res_rms))
             plt.colorbar()
             png_path = os.path.join(resdir, 'good_ifgs/')
-            plt.savefig(good_png_dir+'{}.png'.format(pair), dpi=300)
+            plt.tight_layout()
+            plt.savefig(good_png_dir+'{}.png'.format(pair), dpi=300, bbox_inches='tight')
             plt.close()
 
             del res_num_2pi, res_mm, res_rad, res_rms
@@ -162,7 +162,7 @@ if __name__ == "__main__":
             rms_res_integer_corrected = np.sqrt(np.nanmean((res_num_2pi - res_integer)**2))
             if rms_res_integer_corrected > thresh:
                 bad_ifg_not_corrected.append(pair)
-                print("Integer reduces rms residuals to {:.2f}, still above threshold of {:.2f}, discard...".format(rms_res_integer_corrected, args.thresh))
+                print("Integer reduces rms residuals to {:.2f}, still above threshold of {:.2f}, discard...".format(rms_res_integer_corrected, thresh))
                
                 ## plot_res
                 fig, ax = plt.subplots(1, 2, figsize=(9, 6))
@@ -170,13 +170,13 @@ if __name__ == "__main__":
                 for x in ax:
                     x.axes.xaxis.set_ticklabels([])
                     x.axes.yaxis.set_ticklabels([])
-                im_res = ax[0].imshow(res_num_2pi, vmin=-2, vmax=2, cmap=cm.RdBu)
-                im_res = ax[1].imshow(res_integer, vmin=-2, vmax=2, cmap=cm.RdBu)
+                im_res = ax[0].imshow(res_num_2pi, vmin=-2, vmax=2, cmap=cm.RdBu, interpolation='nearest')
+                im_res = ax[1].imshow(res_integer, vmin=-2, vmax=2, cmap=cm.RdBu, interpolation='nearest')
                 ax[0].scatter(ref_x, ref_y, c='r', s=10)
                 ax[0].set_title("Residual/2pi (RMS={:.2f})".format(res_rms))
                 ax[1].set_title("Nearest integer")
                 plt.colorbar(im_res, ax=ax, location='right', shrink=0.8)
-                plt.savefig(bad_png_dir+'{}.png'.format(pair), dpi=300)
+                plt.savefig(bad_png_dir+'{}.png'.format(pair), dpi=300, bbox_inches='tight')
                 plt.close()
                 del res_num_2pi, res_mm, res_rad, res_rms, res_integer, rms_res_integer_corrected
 
@@ -201,14 +201,14 @@ if __name__ == "__main__":
 
                 # if component mode is useful
                 if rms_res_mode_corrected < thresh:
-                    print("Component modes reduces rms residuals to {:.2f}, below threshold of {:.2f}, correcting by component mode...".format(rms_res_mode_corrected, args.thresh))
+                    print("Component modes reduces rms residuals to {:.2f}, below threshold of {:.2f}, correcting by component mode...".format(rms_res_mode_corrected, thresh))
                     unw_corrected = unw - res_mode * 2 * np.pi
                     correction_title = "Mode_corrected"
                     ifg_corrected_by_mode.append(pair)
                     png_path = os.path.join(mode_png_dir, '{}.png'.format(pair))
 
                 else:  # if component mode is not useful
-                    print("Component modes reduces rms residuals to {:.2f}, above threshold of {:.2f}...".format(rms_res_mode_corrected, args.thresh))
+                    print("Component modes reduces rms residuals to {:.2f}, above threshold of {:.2f}...".format(rms_res_mode_corrected, thresh))
                     print("Integer reduces rms residuals to {:.2f}, correcting by nearest integer...".format(rms_res_integer_corrected))
                     unw_corrected = unw - res_integer * 2 * np.pi
                     correction_title = "Integer_corrected"
@@ -249,8 +249,10 @@ if __name__ == "__main__":
 
     #%% Read date, network information and size
     # ### Get dates
-    retained_ifgs = (good_ifg + ifg_corrected_by_mode + ifg_corrected_by_integer).sort()
-    corrected_ifgs = (ifg_corrected_by_mode + ifg_corrected_by_integer).sort()
+    retained_ifgs = good_ifg + ifg_corrected_by_mode + ifg_corrected_by_integer
+    corrected_ifgs = ifg_corrected_by_mode + ifg_corrected_by_integer
+    retained_ifgs.sort()
+    corrected_ifgs.sort()
     imdates = tools_lib.ifgdates2imdates(retained_ifgs)
     n_im = len(imdates)
 
@@ -262,10 +264,10 @@ if __name__ == "__main__":
     else: #dummy
         bperp = np.random.random(n_im).tolist()
 
-    pngfile = os.path.join(netdir, 'network132_only_good.png')
+    pngfile = os.path.join(netdir, 'network132_only_good_without_correction.png')
     plot_lib.plot_network(retained_ifgs, bperp, corrected_ifgs, pngfile, plot_bad=False)
 
-    pngfile = os.path.join(netdir, 'network131_with_corrected.png')
+    pngfile = os.path.join(netdir, 'network132_with_corrected.png')
     plot_lib.plot_network(retained_ifgs, bperp, corrected_ifgs, pngfile)
 
     pngfile = os.path.join(netdir, 'network132_all.png')

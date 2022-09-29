@@ -71,8 +71,8 @@ def plot_correction():
     ax[1, 0].set_title("Residual/2pi (RMS={:.2f})".format(res_rms))
     ax[1, 1].set_title("Nearest integer")
     ax[1, 2].set_title("Component mode")
-    fig.colorbar(im_con, ax=ax[0, 0], location='right', shrink=0.8)
-    fig.colorbar(im_unw, ax=ax[0, 1:], location='right', shrink=0.8)
+    # fig.colorbar(im_con, ax=ax[0, 0], location='right', shrink=0.8)
+    fig.colorbar(im_unw, ax=ax[0, :], location='right', shrink=0.8)
     fig.colorbar(im_res, ax=ax[1, :], location='right', shrink=0.8)
 
     plt.savefig(png_path, dpi=300)
@@ -139,6 +139,9 @@ if __name__ == "__main__":
     corrected_unw_dir = os.path.join(args.frame_dir, args.unw_dir + "_corrected")
     if os.path.exists(corrected_unw_dir): shutil.rmtree(corrected_unw_dir)
     Path(corrected_unw_dir).mkdir(parents=True, exist_ok=True)
+    os.symlink(os.path.join(unwdir, 'slc.mli.par'), os.path.join(corrected_unw_dir, 'slc.mli.par'))
+    os.symlink(os.path.join(unwdir, 'EQA.dem_par'), os.path.join(corrected_unw_dir, 'EQA.dem_par'))
+
 
     # set up empty ifg lists
     good_ifg = []

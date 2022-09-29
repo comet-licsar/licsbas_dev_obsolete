@@ -1,20 +1,36 @@
 #!/usr/bin/env python3
+"""
+v1.0 20220928 Qi Ou, Leeds Uni
 
-#################
-# Set 80 percentile of RMS ifg residuals in 2pi radian as the threshold
-# Determine the residual threshold for further ifgs to be removed
-# Written by Qi Ou, University Leeds, 22 Sep 2022
-#################
+This script calculates a histogram of each residual map converted into factors of 2pi radian,
+offsets the residual map by the histogram peak to remove any bias from referencing effect
+then calculate the RMS of the de-peaked residual
+plots and saves a histogram of all RMS of all ifgs,
+sets 80 percentile of RMS ifg residuals in 2pi radian as the threshold for step 132_3D_correction.py
 
-from scipy import stats
+===============
+Input & output files
+===============
+
+Inputs in TS_GEOCml*/ :
+ - 13resid/
+   - yyyymmdd_yyyymmdd.res
+ - info/
+   - 13parameters.txt     : parameter file generated after step 13sb_inv
+
+Outputs in TS_GEOCml*/ :
+ - info/
+   - 131resid_2pi.txt        : RMS of the de-peaked residuals as factors of 2pi radian
+   - 131ref_de-peaked.txt    : reference point chosen as the pixel with minimum residual
+   - 131RMS_ifg_res_hist.png : plot of histogram with a vertical bar indicating 80%
+ """
+
 import numpy as np
 import matplotlib.pyplot as plt
 import os
 import glob
 import argparse
 import LiCSBAS_io_lib as io_lib
-import LiCSBAS_tools_lib as tools_lib
-import LiCSBAS_plot_lib as plot_lib
 
 
 if __name__ == "__main__":
@@ -74,7 +90,7 @@ if __name__ == "__main__":
         plt.axvline(x=peak_ifg_res_rms, color='r')
         plt.axvline(x=threshold, color='r')
         plt.title("Residual, peak = {:2f}, 80% = {:2f}".format(peak_ifg_res_rms, threshold))
-        plt.savefig(infodir+"/RMS_ifg_res_hist.png", dpi=300)
+        plt.savefig(infodir+"/131RMS_ifg_res_hist.png", dpi=300)
         
         print('RMS_peak: {:5.2f}'.format(peak_ifg_res_rms), file=f)
         print('RMS_80%: {:5.2f}'.format(threshold), file=f)

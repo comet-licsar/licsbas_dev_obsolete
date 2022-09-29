@@ -1,14 +1,36 @@
 #!/usr/bin/env python3
+"""
+v1.0 20220928 Qi Ou, Leeds Uni
 
-#################
-# 1. for each .res file, deduct the pixel residual histogram peak to unbias the residual map
-# 2. if below threshold, good ifg
-# 3. if above threshold, if remaining residual after integer correction still above threshold, bad ifg
-# 4. if worth correcting, first try correction by component mode based on connected components from SNAPHU and nearest integer of 2pi from the residuals
-# 5. if doesn't go below threshold, correcting by nearest integer
-# run from frame folder of LiCSBAS output
-# Written by Qi Ou, University Leeds, 22 Sep 2022
-#################
+plot unw with non-cyclic linear colour bar,
+plot connected components output by SNAPHU,
+plot residual in radian divided by 2pi and rounded to the nearest integer,
+plot a histogram of residual in radian divided by 2pi
+correct each component by the mode of nearest integer in that component
+run from inside the 13resid folder of LiCSBAS output with "../info/slc.mli.par" pointing to a text file containing range samples and azimuth lines
+
+===============
+Input & output files
+===============
+
+Inputs in GEOCml*/ :
+ - baselines
+Inputs in TS_GEOCml*/ :
+ - 13resid/
+   - yyyymmdd_yyyymmdd.res
+ - info/
+   - 13parameters.txt     : parameter file generated after step 13sb_inv
+   - 131resid_2pi.txt     : RMS residuals per IFG computed in radian and as a factor of 2pi
+   - 131ref_de-peaked.txt : Reference point chosen in step 131 based on minimum de-peaked residual and low network gap
+
+Outputs in TS_GEOCml*/ :
+ - 13resid/
+   - *correction/      : Folders with pngs showing the correction category
+ - info/
+   - 132*.txt          : list of ifgs in each category (bad, good, integer-corrected, mode-corrected)
+ - network/
+   - network132*.png   : Figures of the network
+ """
 
 from scipy import stats
 import numpy as np
@@ -49,8 +71,8 @@ def plot_correction():
     ax[1, 0].set_title("Residual/2pi (RMS={:.2f})".format(res_rms))
     ax[1, 1].set_title("Nearest integer")
     ax[1, 2].set_title("Component mode")
-    fig.colorbar(im_con, ax=ax[0, 0], location='right', shrink=0.8)
-    fig.colorbar(im_unw, ax=ax[0, 1:], location='right', shrink=0.8)
+    # fig.colorbar(im_con, ax=ax[0, 0], location='right', shrink=0.8)
+    fig.colorbar(im_unw, ax=ax[0, :], location='right', shrink=0.8)
     fig.colorbar(im_res, ax=ax[1, :], location='right', shrink=0.8)
     plt.savefig(png_path, dpi=300, bbox_inches='tight')
     plt.close()
@@ -116,6 +138,9 @@ if __name__ == "__main__":
     corrected_unw_dir = os.path.join(args.frame_dir, args.unw_dir + "_corrected")
     if os.path.exists(corrected_unw_dir): shutil.rmtree(corrected_unw_dir)
     Path(corrected_unw_dir).mkdir(parents=True, exist_ok=True)
+    os.symlink(os.path.join(unwdir, 'slc.mli.par'), os.path.join(corrected_unw_dir, 'slc.mli.par'))
+    os.symlink(os.path.join(unwdir, 'EQA.dem_par'), os.path.join(corrected_unw_dir, 'EQA.dem_par'))
+
 
     # set up empty ifg lists
     good_ifg = []

@@ -20,7 +20,7 @@ if __name__ == "__main__":
     parser.add_argument('-f', "--frame_dir", default="./", help="directory of LiCSBAS output of a particular frame")
     parser.add_argument('-g', '--GEOCml_dir', dest="unw_dir", default="GEOCml10GACOS", help="folder containing unw input")
     parser.add_argument('-t', '--ts_dir', dest="ts_dir", default="TS_GEOCml10GACOS", help="folder containing time series")
-    parser.add_argument('-w', '--window_size', dest="win", default="5", help="Window size in km")
+    parser.add_argument('-w', '--window_size', dest="win", default="5", type=float, help="Window size in km")
     args = parser.parse_args()
 
     ifgdir = os.path.abspath(os.path.join(args.frame_dir, args.unw_dir))

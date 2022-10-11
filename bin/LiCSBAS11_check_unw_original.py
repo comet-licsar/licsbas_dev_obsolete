@@ -44,9 +44,6 @@ LiCSBAS11_check_unw.py -d ifgdir [-t tsadir] [-c coh_thre] [-u unw_thre]
 """
 #%% Change log
 '''
-v1.4 20221011 Qi Ou, Uni of Leeds
- - Detect coregistration error as big azimuthal ramp in the middle (arbitrary) column
- - Shortlist by slope > 30, R2 > 0.95, then expand based on repeated epochs in the shortlist, threshold with slopd > 20
 v1.3.4 20211129 Milan Lazecky, Uni of Leeds
  - Extra check on file dimensions - happens if LiCSAR data is inconsistent - should be moved to previous step
 v1.3.3 20210402 Yu Morioshita, GSI
@@ -78,7 +75,6 @@ import datetime as dt
 import LiCSBAS_io_lib as io_lib
 import LiCSBAS_tools_lib as tools_lib
 import LiCSBAS_plot_lib as plot_lib
-from scipy import stats
 
 class Usage(Exception):
     """Usage context manager"""
@@ -174,10 +170,6 @@ def main(argv=None):
     length = int(io_lib.get_param_par(mlipar, 'azimuth_lines'))
     print("\nSize         : {} x {}".format(width, length), flush=True)
 
-    ### Get resolution
-    dempar = os.path.join(ifgdir, 'EQA.dem_par')
-    lattitude_resolution = float(io_lib.get_param_par(dempar, 'post_lat'))
-
     ### Check for corrupted or wrong size unws - remove from ifgdir
     ifgdates = tools_lib.get_ifgdates(ifgdir)
     n_ifg = len(ifgdates)
@@ -215,8 +207,6 @@ def main(argv=None):
     n_unw = np.zeros((length, width), dtype=np.float32)
     coh_avg_ifg = []
     n_unw_ifg = []
-    slope_ifg = []
-    r_square_ifg = []
 
     ### Read data and calculate
     print('\nReading unw and cc data...', flush=True)
@@ -233,9 +223,6 @@ def main(argv=None):
     ## Identify valid area and calc rate_cov
     bool_valid = (n_unw>=n_im)
     n_unw_valid = bool_valid.sum()
-
-    ## coregistration error shortlist
-    coreg_error_ifg = []
 
     ## Read cc and unw data
     for ifgix, ifgd in enumerate(ifgdates):
@@ -260,44 +247,6 @@ def main(argv=None):
 
         coh_avg_ifg.append(np.nanmean(coh[bool_valid])) # Use valid area only
 
-        ## middle column slope
-        middle_column = unw[:, width // 2]
-        middle_column_latitudes = np.arange(length) * lattitude_resolution
-        non_nan_mask = ~np.isnan(middle_column)
-        if np.sum(non_nan_mask) > 1:
-            slope, intercept, r_value, p_value, std_err = stats.linregress(middle_column_latitudes[non_nan_mask], middle_column[non_nan_mask])
-            slope_ifg.append(abs(slope))
-            r_square_ifg.append(r_value**2)
-            if abs(slope) > 30 and r_value**2 > 0.95:
-                coreg_error_ifg.append(ifgd)
-        else:
-            slope_ifg.append(0)
-            r_square_ifg.append(0)
-    ## identify epochs with more than 1 coreg_errors captured by threshold:
-    primarylist = []
-    secondarylist = []
-    for pairs in coreg_error_ifg:
-        primarylist.append(pairs[:8])
-        secondarylist.append(pairs[-8:])
-    all_epochs = primarylist + secondarylist
-    all_epochs.sort()
-    coreg_error_epochs, counts = np.unique(all_epochs, return_counts=True)
-    coreg_error_epochs = coreg_error_epochs[counts>1]
-
-    ## grow the shortlist with repeated epochs in the shortlist
-    ifg_containing_coreg_error_epochs = np.zeros(len(ifgdates))
-    all_ifg_epoch1 = []
-    all_ifg_epoch2 = []
-    for pairs in ifgdates:
-        all_ifg_epoch1.append(pairs[:8])
-        all_ifg_epoch2.append(pairs[-8:])
-    for epoch in coreg_error_epochs:
-        ifg_containing_coreg_error_epochs += np.array(all_ifg_epoch1) == epoch
-        ifg_containing_coreg_error_epochs += np.array(all_ifg_epoch2) == epoch
-    ## threshold the expanded list with criteria slope_ifg => 20
-    ifg_containing_coreg_error_epochs[np.array(slope_ifg) < 20] = 0 
-
-    ## convert unw pixels into percentage unw coverage
     rate_cov = np.array(n_unw_ifg)/n_unw_valid
 
     ## Read bperp data or dummy
@@ -313,11 +262,11 @@ def main(argv=None):
     ixs_bad_ifgdates = []
 
     ### Header of stats file
-    ifg_statsfile = os.path.join(infodir, '111ifg_stats.txt')
+    ifg_statsfile = os.path.join(infodir, '11ifg_stats.txt')
     fstats = open(ifg_statsfile, 'w')
     print('# Size: {0}({1}x{2}), n_valid: {3}'.format(width*length, width, length, n_unw_valid), file=fstats)
-    print('# unw_cov_thre: {0}, coh_thre: {1}, |slope|:30 & r^2: 0.95 => repeated epochs => |slope|:20'.format(unw_cov_thre, coh_thre), file=fstats)
-    print('# ifg dates         bperp   dt unw_cov  coh_av   |slope|   r^2', file=fstats)
+    print('# unw_cov_thre: {0}, coh_thre: {1}'.format(unw_cov_thre, coh_thre), file=fstats)
+    print('# ifg dates         bperp   dt unw_cov  coh_av', file=fstats)
 
     ### Identify suffix of raster image (png, ras or bmp?)
     unwfile = os.path.join(ifgdir, ifgdates[0], ifgdates[0]+'.unw')
@@ -343,7 +292,7 @@ def main(argv=None):
 
         ### Identify bad ifgs and link ras
         if rate_cov[i] < unw_cov_thre or coh_avg_ifg[i] < coh_thre or \
-           np.isnan(rate_cov[i]) or np.isnan(coh_avg_ifg[i]) or ifg_containing_coreg_error_epochs[i] > 0:
+           np.isnan(rate_cov[i]) or np.isnan(coh_avg_ifg[i]):
             bad_ifgdates.append(ifgdates[i])
             ixs_bad_ifgdates.append(i)
             rm_flag = '*'
@@ -360,7 +309,7 @@ def main(argv=None):
         sday = dt.datetime.strptime(ifgd[-8:], '%Y%m%d').toordinal()
         dt_ifg = sday-mday
 
-        print('{0}  {1:6.1f}  {2:3}   {3:5.3f}   {4:5.3f}    {5:5.3f}    {6:5.3f}  {7}'.format(ifgd, bperp_ifg, dt_ifg, rate_cov[i],  coh_avg_ifg[i], slope_ifg[i], r_square_ifg[i], rm_flag), file=fstats)
+        print('{0}  {1:6.1f}  {2:3}   {3:5.3f}   {4:5.3f} {5}'.format(ifgd, bperp_ifg, dt_ifg, rate_cov[i],  coh_avg_ifg[i], rm_flag), file=fstats)
 
     fstats.close()
 

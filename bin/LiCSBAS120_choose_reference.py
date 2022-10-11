@@ -38,7 +38,7 @@ if __name__ == "__main__":
     dempar = os.path.join(ifgdir, 'EQA.dem_par')
     lattitude_resolution = float(io_lib.get_param_par(dempar, 'post_lat'))
     window_size = int(abs(args.win / 110 / lattitude_resolution) + 0.5)   # 110 km per degree latitude
-    print(window_size, args.win, lattitude_resolution)
+    print("\nWindow size : ", window_size)
 
     ifgdates = tools_lib.get_ifgdates(ifgdir)
 
@@ -52,10 +52,6 @@ if __name__ == "__main__":
         unw = io_lib.read_img(unwfile, length, width)
         unw[unw == 0] = np.nan # Fill 0 with nan
         n_unw += ~np.isnan(unw) # Summing number of unnan unw
-        # unw[np.isnan(unw)] = 0
-        # unw[~np.isnan(unw)] = 1
-        # unw[unw != 0] = 1  # turn non-nan pixels into 1, keep nan pixels as 0
-        # n_unw += unw   # stacking unw pixels
 
         # coherence values from 0 to 1
         ccfile = os.path.join(ifgdir, ifgd, ifgd + '.cc')
@@ -77,9 +73,9 @@ if __name__ == "__main__":
     block_unw = block_sum(n_unw, window_size)
     block_coh = block_sum(n_coh, window_size)
     block_con = block_sum(n_con, window_size)
-    # block_unw = block_unw / np.max(block_unw)
-    # block_coh = block_coh / np.max(block_coh)
-    # block_con = block_con / np.max(block_con)
+    block_unw = block_unw / np.max(block_unw)
+    block_coh = block_coh / np.max(block_coh)
+    block_con = block_con / np.max(block_con)
     fig, ax = plt.subplots(1, 3)
     im_unw = ax[0].imshow(block_unw)
     im_coh = ax[1].imshow(block_coh)

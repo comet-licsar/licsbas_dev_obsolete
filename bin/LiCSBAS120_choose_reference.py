@@ -60,7 +60,7 @@ if __name__ == "__main__":
 
         # connected components in terms of component area (pixel count)
         confile = os.path.join(ifgdir, ifgd, ifgd+'.conncomp')
-        con = io_lib.read_img(confile, length, width)
+        con = io_lib.read_img(confile, length, width, np.uint8)
         # replace component index by component size. the first component is the 0th component, which should be of size 0
         uniq_components, pixel_counts = np.unique(con.flatten(), return_counts=True)[1:]
         for i, component in enumerate(uniq_components[1:]):

@@ -62,7 +62,7 @@ if __name__ == "__main__":
         confile = os.path.join(ifgdir, ifgd, ifgd+'.conncomp')
         con = io_lib.read_img(confile, length, width, np.uint8)
         # replace component index by component size. the first component is the 0th component, which should be of size 0
-        uniq_components, pixel_counts = np.unique(con.flatten(), return_counts=True)[1:]
+        uniq_components, pixel_counts = np.unique(con.flatten(), return_counts=True)
         for i, component in enumerate(uniq_components[1:]):
             con[con==component] = pixel_counts[i+1]
         n_con += con

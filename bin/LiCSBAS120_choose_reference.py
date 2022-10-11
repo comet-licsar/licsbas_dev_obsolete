@@ -37,7 +37,8 @@ if __name__ == "__main__":
     ### Get resolution
     dempar = os.path.join(ifgdir, 'EQA.dem_par')
     lattitude_resolution = float(io_lib.get_param_par(dempar, 'post_lat'))
-    window_size = int(args.win / 110 / lattitude_resolution)   # 110 km per degree latitude
+    window_size = int(args.win / 110 / lattitude_resolution + 0.5)   # 110 km per degree latitude
+    print(window_size, args.win, lattitude_resolution)
 
     ifgdates = tools_lib.get_ifgdates(ifgdir)
 

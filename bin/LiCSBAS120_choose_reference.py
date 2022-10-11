@@ -50,10 +50,12 @@ if __name__ == "__main__":
         # turn ifg into ones and zeros for non-nan and nan values
         unwfile = os.path.join(ifgdir, ifgd, ifgd+'.unw')
         unw = io_lib.read_img(unwfile, length, width)
-        unw[np.isnan(unw)] = 0
-        unw[~np.isnan(unw)] = 1
+        unw[unw == 0] = np.nan # Fill 0 with nan
+        n_unw += ~np.isnan(unw) # Summing number of unnan unw
+        # unw[np.isnan(unw)] = 0
+        # unw[~np.isnan(unw)] = 1
         # unw[unw != 0] = 1  # turn non-nan pixels into 1, keep nan pixels as 0
-        n_unw += unw   # stacking unw pixels
+        # n_unw += unw   # stacking unw pixels
 
         # coherence values from 0 to 1
         ccfile = os.path.join(ifgdir, ifgd, ifgd + '.cc')

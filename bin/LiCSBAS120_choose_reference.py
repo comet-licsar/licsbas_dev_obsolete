@@ -5,9 +5,10 @@ import argparse
 import LiCSBAS_io_lib as io_lib
 import LiCSBAS_tools_lib as tools_lib
 
-def block_sum(arra1, k):
-    result = np.add.reduceat(np.add.reduceat(arra1, np.arange(0, arra1.shape[0], k), axis=0),
-                             np.arange(0, arra1.shape[1], k), axis=1)
+
+def block_sum(array, k):
+    result = np.add.reduceat(np.add.reduceat(array, np.arange(0, array.shape[0], k), axis=0),
+                             np.arange(0, array.shape[1], k), axis=1)
     return result
 
 

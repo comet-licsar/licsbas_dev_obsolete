@@ -109,6 +109,7 @@ if __name__ == "__main__":
 
     fig, ax = plt.subplots(1, 2)
     ax[0].imshow(block_rms_hgt, vmin=0, vmax=1/window_size)
+    hgt[hgt==0] = np.nan
     ax[1].imshow(hgt)
     fig.savefig("height.png", dpi=300, bbox_inches='tight')
 

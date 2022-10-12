@@ -120,6 +120,7 @@ if __name__ == "__main__":
 
     proxy_thresh = np.nanpercentile(block_proxy, 0.1)
     refys, refxs = np.where(block_proxy < proxy_thresh)
+    print(refys, refxs, block_proxy[block_proxy < proxy_thresh])
     distance_to_center = np.sqrt(( refys - length/2) ** 2 +  (refxs - width/2) ** 2 )
     print(distance_to_center)
     nearest_to_center = np.min(distance_to_center)

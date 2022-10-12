@@ -118,8 +118,8 @@ if __name__ == "__main__":
     ax[0, 2].set_title("proxy")
     ax[1, 2].set_title("unw example")
 
-    proxy_thresh = np.nanpercentile(block_proxy, 0.1)
-    refys, refxs = np.where(block_proxy < proxy_thresh)
+    proxy_thresh = np.nanpercentile(block_proxy, 99)
+    refys, refxs = np.where(block_proxy > proxy_thresh)
     print(refys, refxs, block_proxy[block_proxy < proxy_thresh])
     distance_to_center = np.sqrt(( refys - length/2) ** 2 +  (refxs - width/2) ** 2 )
     print(distance_to_center)

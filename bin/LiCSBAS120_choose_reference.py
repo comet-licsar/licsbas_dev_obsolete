@@ -144,10 +144,7 @@ if __name__ == "__main__":
     refys, refxs = np.where(block_proxy == proxy_max)
     refy = refys[0]
     refx = refxs[0]
-
-
     ax[1, 2].scatter(refx, refy, s=5, c='green')
-
     plt.colorbar(im_unw, ax=ax, orientation='horizontal')
 
     fig.savefig("reference.png", dpi=300, bbox_inches='tight')
@@ -157,4 +154,13 @@ if __name__ == "__main__":
     hgt[hgt==0] = np.nan
     ax[1].imshow(hgt)
     fig.savefig("height.png", dpi=300, bbox_inches='tight')
+
+    refx1s, refx2s, refy1s, refy2s = refx-window_size//2, refx+window_size//2, refy-window_size//2, refy+window_size//2
+    print('Selected ref: {}:{}/{}:{}'.format(refx1s, refx2s, refy1s, refy2s), flush=True)
+
+    ### Save ref
+    refsfile = os.path.join(infodir, '120ref.txt')
+    with open(refsfile, 'w') as f:
+        print('{}:{}/{}:{}'.format(refx1s, refx2s, refy1s, refy2s), file=f)
+
 

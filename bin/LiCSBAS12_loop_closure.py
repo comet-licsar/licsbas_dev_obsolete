@@ -55,7 +55,7 @@ Outputs in TS_GEOCml*/ :
 Usage
 =====
 LiCSBAS12_loop_closure.py -d ifgdir [-t tsadir] [-l loop_thre] [--multi_prime]
- [--rm_ifg_list file] [--n_para int] [--nullify] [--ref_approx lon/lat]
+ [--rm_ifg_list file] [--n_para int] [--nullify] [--ref_approx lon/lat] [--skip_pngs]
 
  -d  Path to the GEOCml* dir containing stack of unw data.
  -t  Path to the output TS_GEOCml* dir. (Default: TS_GEOCml*)
@@ -65,6 +65,7 @@ LiCSBAS12_loop_closure.py -d ifgdir [-t tsadir] [-l loop_thre] [--multi_prime]
  --n_para  Number of parallel processing (Default: # of usable CPU)
  --nullify Nullify unw values causing loop residuals >pi, per-pixel
  --ref_approx  Approximate geographic coordinates for reference area (lon/lat)
+ --skip_pngs Do not generate png previews of loop closures (often takes long)
 """
 #%% Change log
 '''
@@ -425,6 +426,37 @@ def main(argv=None):
         refnearyx = np.array(loop_ph_rms_points_masked.shape)
         refnearyx = np.round(refnearyx/2).astype(np.int16)
     # get pixels with low loop errors, i.e. within 20% percentile - or should we do lower?
+    # 2022-10-12: instead of loop phase rms, choose pixel with highest coherence around given point
+    realphrms = loop_ph_rms_points_masked
+    # calculating avg_coh here already
+    print('calculating average coherence (to be used also for ref point selection)')
+    coh_avg = np.zeros((length, width), dtype=np.float32)
+    n_coh = np.zeros((length, width), dtype=np.int16)
+    #n_unw = np.zeros((length, width), dtype=np.int16)
+    ifgdates_good = list(set(ifgdates)-set(bad_ifg))
+    for ifgd in ifgdates_good:
+        ccfile = os.path.join(ifgdir, ifgd, ifgd+'.cc')
+        if os.path.getsize(ccfile) == length*width:
+            coh = io_lib.read_img(ccfile, length, width, np.uint8)
+            coh = coh.astype(np.float32)/255
+        else:
+            coh = io_lib.read_img(ccfile, length, width)
+            coh[np.isnan(coh)] = 0 # Fill nan with 0
+
+        coh_avg += coh
+        n_coh += (coh!=0)
+        #unwfile = os.path.join(ifgdir, ifgd, ifgd+'.unw')
+        #unw = io_lib.read_img(unwfile, length, width)
+        #unw[unw == 0] = np.nan # Fill 0 with nan
+        #n_unw += ~np.isnan(unw) # Summing number of unnan unw
+
+    coh_avg[n_coh==0] = np.nan
+    n_coh[n_coh==0] = 1 #to avoid zero division
+    coh_avg = coh_avg/n_coh
+    coh_avg[coh_avg==0] = np.nan
+    #
+    # for convenience (debug, to be checked if works ok), changing this to 1/coh
+    loop_ph_rms_points_masked = 1/coh_avg
     percentile = 20
     percthres = np.nanpercentile(loop_ph_rms_points_masked,percentile)
     refyxs = np.where(loop_ph_rms_points_masked<percthres)
@@ -445,19 +477,14 @@ def main(argv=None):
         print('selected ref point is '+str(distref[refpoint])+' px from desired location')
     except:
         print('error - seems no points below '+str(percentile)+'% percentile of loop errors: '+str(percthres)+'. reverting to original licsbas approach')
+        loop_ph_rms_points_masked = realphrms
         refyx = np.where(loop_ph_rms_points_masked==np.nanmin(loop_ph_rms_points_masked))
         refy1 = refyx[0][0] # start from 0, not 1
         refx1 = refyx[1][0]
-    '''
-    import rioxarray as rio
-    a = rio.open_rasterio('082D_05128_030500.vel.geo.tif')
-    a[0].values = loop_ph_rms_points_masked
-    a.rio.to_raster('this.tif')
-    
-    '''
     
     refy2 = refy1+1
     refx2 = refx1+1
+    loop_ph_rms_points_masked = realphrms
     
     ### Save 12ref.txt
     reffile = os.path.join(infodir, '12ref.txt')

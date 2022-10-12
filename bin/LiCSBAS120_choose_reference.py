@@ -120,7 +120,7 @@ if __name__ == "__main__":
 
     max_proxy = np.nanmax(block_proxy)
     refy1s, refx1s = np.where(block_proxy == max_proxy)
-    ax[1, 2].scatter(refx1s[0], refy1s[0])
+    ax[1, 2].scatter(refx1s[0], refy1s[0], s=5, c='gold')
 
     plt.colorbar(im_unw, ax=ax, orientation='horizontal')
 

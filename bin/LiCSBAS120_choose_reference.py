@@ -87,13 +87,14 @@ if __name__ == "__main__":
     block_rms_hgt = np.sqrt( block_sum(hgt_demean_square, window_size) / (window_size ** 2) )
     block_rms_hgt = block_rms_hgt / np.max(block_rms_hgt)
 
+    block_rms_hgt[block_rms_hgt == 0] = 0.001
     block_proxy = block_unw * block_coh * block_con / block_rms_hgt
     block_proxy = block_proxy / np.max(block_proxy)
 
     block_unw[block_unw == 0] = np.nan
     block_coh[block_coh == 0] = np.nan
     block_con[block_con == 0] = np.nan
-    block_rms_hgt[block_rms_hgt == 0] = np.nan
+    block_rms_hgt[block_rms_hgt == 0.001] = np.nan
     block_proxy[block_proxy == 0] = np.nan
 
     fig, ax = plt.subplots(2, 3, sharey='all', sharex='all')

@@ -98,8 +98,8 @@ if __name__ == "__main__":
     hgt_demean_square = hgt_demean ** 2
     block_rms_hgt = np.sqrt( block_sum(hgt_demean_square, window_size) / (window_size ** 2) )
     block_rms_hgt = block_rms_hgt / np.max(block_rms_hgt)
-    low_block_rms_hgt = np.nanpercentile(block_rms_hgt, 10)
-    block_rms_hgt[block_rms_hgt < low_block_rms_hgt] = low_block_rms_hgt
+    # low_block_rms_hgt = np.nanpercentile(block_rms_hgt, 10)
+    # block_rms_hgt[block_rms_hgt < low_block_rms_hgt] = low_block_rms_hgt
 
     block_rms_hgt[block_rms_hgt == 0] = 0.001
     block_proxy = block_unw + block_coh + block_con - block_rms_hgt
@@ -120,7 +120,7 @@ if __name__ == "__main__":
     im_unw = ax[0, 0].imshow(block_unw)
     im_coh = ax[0, 1].imshow(block_coh)
     im_con = ax[1, 0].imshow(block_con)
-    im_hgt = ax[1, 1].imshow(block_rms_hgt, vmin=0, vmax=1/window_size)
+    im_hgt = ax[1, 1].imshow(block_rms_hgt, vmin=0, vmax=2/window_size)
     im_proxy = ax[0, 2].imshow(block_proxy)
     im_example = ax[1, 2].imshow(unw_example, cmap=cm.RdBu)
 
@@ -156,13 +156,14 @@ if __name__ == "__main__":
 
     fig.savefig("reference.png", dpi=300, bbox_inches='tight')
 
-    fig, ax = plt.subplots(1, 2)
-    ax[0].imshow(block_rms_hgt, vmin=0, vmax=1/window_size)
-    hgt[hgt==0] = np.nan
-    ax[1].imshow(hgt)
-    fig.savefig("height.png", dpi=300, bbox_inches='tight')
+    # fig, ax = plt.subplots(1, 2)
+    # ax[0].imshow(block_rms_hgt, vmin=0, vmax=1/window_size)
+    # hgt[hgt==0] = np.nan
+    # ax[1].imshow(hgt)
+    # fig.savefig("height.png", dpi=300, bbox_inches='tight')
 
-    refx1s, refx2s, refy1s, refy2s = refx-window_size//2, refx+window_size//2, refy-window_size//2, refy+window_size//2
+    # print reference point
+    refx1s, refx2s, refy1s, refy2s = refx*window_size, (refx+1)*window_size, refy*window_size, (refy+1)*window_size
     print('Selected ref: {}:{}/{}:{}'.format(refx1s, refx2s, refy1s, refy2s), flush=True)
 
     ### Save ref

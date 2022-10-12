@@ -6,6 +6,7 @@ import os
 import argparse
 import LiCSBAS_io_lib as io_lib
 import LiCSBAS_tools_lib as tools_lib
+from matplotlib import cm
 
 
 def block_sum(array, k):
@@ -97,20 +98,32 @@ if __name__ == "__main__":
     block_rms_hgt[block_rms_hgt == 0.001] = np.nan
     block_proxy[block_proxy == 0] = np.nan
 
+    unwfile = os.path.join(ifgdir, ifgd, ifgd + '.unw')
+    unw = io_lib.read_img(unwfile, length, width)
+    unw_example = block_sum(unw, window_size)
+    unw_example[unw_example == 0] = np.nan
+
     fig, ax = plt.subplots(2, 3, sharey='all', sharex='all')
     im_unw = ax[0, 0].imshow(block_unw)
     im_coh = ax[0, 1].imshow(block_coh)
     im_con = ax[1, 0].imshow(block_con)
     im_hgt = ax[1, 1].imshow(block_rms_hgt, vmin=0, vmax=1/window_size)
     im_proxy = ax[0, 2].imshow(block_proxy)
+    im_example = ax[0, 2].imshow(unw_example, cmap=cm.RdBu)
 
     ax[0, 0].set_title("block_sum_unw")
     ax[0, 1].set_title("block_sum_coh")
     ax[1, 0].set_title("block_sum_comp_size")
     ax[1, 1].set_title("block_std_hgt")
     ax[0, 2].set_title("proxy")
+    ax[1, 2].set_title("unw example")
 
-    ax[1, 2].set_axis_off()
+    max_proxy = np.nanmax(block_proxy)
+    refy1s, refx1s = np.where(block_proxy == max_proxy)
+    ax[1, 2].scatter(refx1s[0], refy1s[0])
+
+    plt.colorbar(im_unw, ax=ax, orientation='horizontal')
+
     fig.savefig("reference.png", dpi=300, bbox_inches='tight')
 
     fig, ax = plt.subplots(1, 2)

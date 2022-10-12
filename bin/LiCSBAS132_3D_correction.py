@@ -108,7 +108,7 @@ if __name__ == "__main__":
 
     resid_threshold_file = os.path.join(infodir, '131resid_2pi.txt')
     if os.path.exists(resid_threshold_file):
-        thresh = float(io_lib.get_param_par(resid_threshold_file, 'RMS_80%'))
+        thresh = float(io_lib.get_param_par(resid_threshold_file, 'RMS_thresh'))
     else:
         thresh = args.thresh
     print("Correction threshold = {:2f}".format(thresh))

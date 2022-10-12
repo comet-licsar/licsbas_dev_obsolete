@@ -101,14 +101,14 @@ if __name__ == "__main__":
     # low_block_rms_hgt = np.nanpercentile(block_rms_hgt, 10)
     # block_rms_hgt[block_rms_hgt < low_block_rms_hgt] = low_block_rms_hgt
 
-    block_rms_hgt[block_rms_hgt == 0] = 0.001
+    # block_rms_hgt[block_rms_hgt == 0] = 0.001
     block_proxy = block_unw + block_coh + block_con - block_rms_hgt
     block_proxy = block_proxy / np.max(block_proxy)
 
     block_unw[block_unw == 0] = np.nan
     block_coh[block_coh == 0] = np.nan
     block_con[block_con == 0] = np.nan
-    block_rms_hgt[block_rms_hgt == 0.001] = np.nan
+    block_rms_hgt[block_rms_hgt == 0] = np.nan
     block_proxy[block_proxy == 0] = np.nan
 
     unwfile = os.path.join(ifgdir, ifgd, ifgd + '.unw')

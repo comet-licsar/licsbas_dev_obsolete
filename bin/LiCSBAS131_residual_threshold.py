@@ -98,21 +98,38 @@ if __name__ == "__main__":
 
         # calculate rms de-peaked residuals
         for i in range(len(res_rms_list)):
-            sumsq_de_peaked_res = sumsq_de_peaked_res + res_num_2pi.reshape((azimuth_lines, range_samples))
-
+            sumsq_de_peaked_res += abs(res_num_2pi.reshape((azimuth_lines, range_samples)))
+            print(res_num_2pi.reshape((azimuth_lines, range_samples))[500:505, 249:253])
+            print(sumsq_de_peaked_res[500:505, 249:253])
+    fig, ax = plt.subplots(1, 3)
     # calculate rms de-peaked residuals
     rms_de_peaked_res = np.sqrt(sumsq_de_peaked_res/len(res_rms_list))
-
+    vmin = np.nanpercentile(rms_de_peaked_res, 1)
+    vmax = np.nanpercentile(rms_de_peaked_res, 95)
+    im = ax[0].imshow(rms_de_peaked_res, vmin=vmin, vmax=vmax)    
+    ax[0].set_title("RMS_de-peaked_Res")
     ### Mask residual by minimum n_gap
     n_gap = io_lib.read_img(os.path.join(resultsdir, 'n_gap'), azimuth_lines, range_samples)
     min_n_gap = np.nanmin(n_gap)
     mask_n_gap = np.float32(n_gap==min_n_gap)
     mask_n_gap[mask_n_gap == 0] = np.nan
     rms_de_peaked_res = rms_de_peaked_res*mask_n_gap
+    mask=ax[1].imshow(mask_n_gap)
+    ax[1].set_title("n_gap")
+    ax[2].imshow(rms_de_peaked_res, vmin=vmin, vmax=vmax)
+    ax[2].set_title("Masked RMS")
+    plt.colorbar(im, ax=ax, orientation='horizontal')
+    plt.colorbar(mask, ax=ax[1], orientation='horizontal')
+    print(min_n_gap)    
 
     ### Find stable reference
     min_rms = np.nanmin(rms_de_peaked_res)
     refy1s, refx1s = np.where(rms_de_peaked_res == min_rms)
+    print(refy1s, refx1s, min_rms)
+    print(rms_de_peaked_res[refy1s[0]-5:refy1s[0]+5, refx1s[0]-5:refx1s[0]+5])
+    ax[2].scatter(refx1s, refy1s)
+    ax[2].scatter(refx1s[0], refy1s[0])
+    fig.savefig(infodir+"/131RMS_ifg_res_ref.png", dpi=300)
     refy1s, refx1s = refy1s[0], refx1s[0]  ## Only first index
     refy2s, refx2s = refy1s+1, refx1s+1
     print('Selected ref: {}:{}/{}:{}'.format(refx1s, refx2s, refy1s, refy2s), flush=True)

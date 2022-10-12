@@ -101,7 +101,7 @@ if __name__ == "__main__":
     hgt_demean = hgt - broadcast_mean_hgt[:hgt.shape[0], :hgt.shape[1]]
     hgt_demean_square = hgt_demean ** 2
     block_rms_hgt = np.sqrt( block_sum(hgt_demean_square, window_size) / (window_size ** 2) )
-    block_rms_hgt = block_rms_hgt / np.max(block_rms_hgt)
+    block_rms_hgt = block_rms_hgt / np.max(block_rms_hgt) * 2
 
     # low_block_rms_hgt = np.nanpercentile(block_rms_hgt, 10)
     # block_rms_hgt[block_rms_hgt < low_block_rms_hgt] = low_block_rms_hgt

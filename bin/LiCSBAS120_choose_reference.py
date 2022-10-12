@@ -76,14 +76,30 @@ if __name__ == "__main__":
     block_unw = block_unw / np.max(block_unw)
     block_coh = block_coh / np.max(block_coh)
     block_con = block_con / np.max(block_con)
-    fig, ax = plt.subplots(1, 3)
-    im_unw = ax[0].imshow(block_unw)
-    im_coh = ax[1].imshow(block_coh)
-    im_con = ax[2].imshow(block_con)
-    plt.colorbar(im_unw, ax=ax[0])
-    plt.colorbar(im_coh, ax=ax[1])
-    plt.colorbar(im_con, ax=ax[2])
+
+    hgtfile = os.path.join(resultsdir, 'hgt')
+    hgt = io_lib.read_img(hgtfile, length, width)
+    block_mean_hgt = block_sum(hgt, window_size)/(window_size**2)
+    repeat_block_mean_hgt = np.repeat(block_mean_hgt, window_size, axis=1)
+    broadcast_mean_hgt = np.repeat(repeat_block_mean_hgt, window_size, axis=0)
+    hgt_demean = hgt - broadcast_mean_hgt[:hgt.shape[0], :hgt.shape[1]]
+    hgt_demean_square = hgt_demean ** 2
+    block_rms_hgt = np.sqrt( block_sum(hgt_demean_square, window_size) / (window_size ** 2) )
+    block_rms_hgt = block_con / np.max(block_rms_hgt)
+
+    fig, ax = plt.subplots(2, 2, sharey='all', sharex='all')
+    im_unw = ax[0,0].imshow(block_unw)
+    im_coh = ax[0,1].imshow(block_coh)
+    im_con = ax[1,0].imshow(block_con)
+    im_hgt = ax[1,1].imshow(block_rms_hgt)
+    plt.colorbar(im_unw, ax=ax[0,0])
+    plt.colorbar(im_coh, ax=ax[0.1])
+    plt.colorbar(im_con, ax=ax[1,0])
+    plt.colorbar(im_hgt, ax=ax[1,1])
     fig.savefig("reference.png", dpi=300, bbox_inches='tight')
 
-
+    fig, ax = plt.subplots(1, 2)
+    ax[0].imshow(block_rms_hgt)
+    ax[1].imshow(hgt)
+    fig.savefig("height.png", dpi=300, bbox_inches='tight')
 

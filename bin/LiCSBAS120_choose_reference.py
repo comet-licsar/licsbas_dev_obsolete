@@ -102,7 +102,7 @@ if __name__ == "__main__":
     block_rms_hgt[block_rms_hgt < low_block_rms_hgt] = low_block_rms_hgt
 
     block_rms_hgt[block_rms_hgt == 0] = 0.001
-    block_proxy = block_unw * block_coh * block_con / block_rms_hgt
+    block_proxy = block_unw + block_coh + block_con - block_rms_hgt
     block_proxy = block_proxy / np.max(block_proxy)
 
     block_unw[block_unw == 0] = np.nan

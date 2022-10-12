@@ -79,7 +79,6 @@ if __name__ == "__main__":
 
     hgtfile = os.path.join(resultsdir, 'hgt')
     hgt = io_lib.read_img(hgtfile, length, width)
-    hgt[hgt == 0] = np.nan  # Fill 0 with nan
     block_mean_hgt = block_sum(hgt, window_size)/(window_size**2)
     repeat_block_mean_hgt = np.repeat(block_mean_hgt, window_size, axis=1)
     broadcast_mean_hgt = np.repeat(repeat_block_mean_hgt, window_size, axis=0)

@@ -118,9 +118,15 @@ if __name__ == "__main__":
     ax[0, 2].set_title("proxy")
     ax[1, 2].set_title("unw example")
 
-    max_proxy = np.nanmax(block_proxy)
-    refy1s, refx1s = np.where(block_proxy == max_proxy)
-    ax[1, 2].scatter(refx1s[0], refy1s[0], s=5, c='gold')
+    proxy_thresh = np.nanpercentile(block_proxy, 1)
+    refys, refxs = np.where(block_proxy < proxy_thresh)
+    distance_to_center = np.sqrt(( refys - length/2) ** 2 +  (refxs - width/2) ** 2 )
+    nearest_to_center = np.min(distance_to_center)
+    index_nearest_to_center = np.where(distance_to_center == nearest_to_center)
+    refy = refys[index_nearest_to_center]
+    refx = refxs[index_nearest_to_center]
+
+    ax[1, 2].scatter(refx, refy, s=5, c='gold')
 
     plt.colorbar(im_unw, ax=ax, orientation='horizontal')
 

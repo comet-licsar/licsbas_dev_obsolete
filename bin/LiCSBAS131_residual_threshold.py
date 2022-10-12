@@ -39,6 +39,7 @@ if __name__ == "__main__":
     parser.add_argument('-f', "--frame_dir", default="./", help="directory of LiCSBAS output of a particular frame")
     parser.add_argument('-g', '--GEOCml_dir', dest="unw_dir", default="GEOCml10GACOS", help="folder containing unw input")
     parser.add_argument('-t', '--ts_dir', dest="ts_dir", default="TS_GEOCml10GACOS", help="folder containing time series")
+    parser.add_argument('-p', '--percentile', dest="thresh", default="80", type=float, help="percentile RMS for thresholding")
     args = parser.parse_args()
 
     speed_of_light = 299792458  # m/s
@@ -86,15 +87,16 @@ if __name__ == "__main__":
 
         count_ifg_res_rms, bin_edges, patches = plt.hist(res_rms_list, np.arange(0, 3, 0.1))
         peak_ifg_res_rms = bin_edges[count_ifg_res_rms.argmax()]+0.05
-        threshold = np.nanpercentile(res_rms_list, 80)
+        threshold = np.nanpercentile(res_rms_list, args.thresh)
         plt.axvline(x=peak_ifg_res_rms, color='r')
         plt.axvline(x=threshold, color='r')
-        plt.title("Residual, peak = {:2f}, 80% = {:2f}".format(peak_ifg_res_rms, threshold))
+        plt.title("Residual, peak = {:2f}, {}% = {:2f}".format(peak_ifg_res_rms, int(args.thresh), threshold))
         plt.savefig(infodir+"/131RMS_ifg_res_hist.png", dpi=300)
         
         print('RMS_peak: {:5.2f}'.format(peak_ifg_res_rms), file=f)
-        print('RMS_80%: {:5.2f}'.format(threshold), file=f)
-        print('IFG RMS res, peak = {:2f}, 80% = {:2f}'.format(peak_ifg_res_rms, threshold))
+        print('RMS_percentile: {}'.format(int(args.thresh), ), file=f)
+        print('RMS_thresh: {:5.2f}'.format(threshold), file=f)
+        print('IFG RMS res, peak = {:2f}, {}% = {:2f}'.format(peak_ifg_res_rms, int(args.thresh), threshold))
 
         # calculate rms de-peaked residuals
         for i in range(len(res_rms_list)):

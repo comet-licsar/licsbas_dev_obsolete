@@ -129,18 +129,24 @@ if __name__ == "__main__":
     ax[0, 2].set_title("proxy")
     ax[1, 2].set_title("unw example")
 
-    proxy_thresh = np.nanpercentile(block_proxy, 99)
-    refys, refxs = np.where(block_proxy > proxy_thresh)
-    print(refys, refxs, block_proxy[block_proxy < proxy_thresh])
-    distance_to_center = np.sqrt(( refys - length/2) ** 2 +  (refxs - width/2) ** 2 )
-    print(distance_to_center)
-    nearest_to_center = np.min(distance_to_center)
-    index_nearest_to_center = np.where(distance_to_center == nearest_to_center)
-    refy = refys[index_nearest_to_center]
-    refx = refxs[index_nearest_to_center]
-    print(index_nearest_to_center, refy, refx)
+    # proxy_thresh = np.nanpercentile(block_proxy, 99)
+    # refys, refxs = np.where(block_proxy > proxy_thresh)
+    # print(refys, refxs, block_proxy[block_proxy < proxy_thresh])
+    # distance_to_center = np.sqrt(( refys - length/2) ** 2 +  (refxs - width/2) ** 2 )
+    # print(distance_to_center)
+    # nearest_to_center = np.min(distance_to_center)
+    # index_nearest_to_center = np.where(distance_to_center == nearest_to_center)
+    # refy = refys[index_nearest_to_center]
+    # refx = refxs[index_nearest_to_center]
+    # print(index_nearest_to_center, refy, refx)
 
-    ax[1, 2].scatter(refx, refy, s=5, c='gold')
+    proxy_max = np.nanmax(block_proxy)
+    refys, refxs = np.where(block_proxy == proxy_max)
+    refy = refys[0]
+    refx = refxs[0]
+
+
+    ax[1, 2].scatter(refx, refy, s=5, c='green')
 
     plt.colorbar(im_unw, ax=ax, orientation='horizontal')
 

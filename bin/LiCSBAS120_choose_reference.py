@@ -146,7 +146,12 @@ if __name__ == "__main__":
     refys, refxs = np.where(block_proxy == proxy_max)
     refy = refys[0]
     refx = refxs[0]
-    ax[1, 2].scatter(refx, refy, s=5, c='green')
+    ax[1, 2].scatter(refx, refy, s=3, c='red')
+    ax[0, 2].scatter(refx, refy, s=3, c='red')
+    ax[0, 0].scatter(refx, refy, s=3, c='red')
+    ax[0, 1].scatter(refx, refy, s=3, c='red')
+    ax[1, 0].scatter(refx, refy, s=3, c='red')
+    ax[1, 1].scatter(refx, refy, s=3, c='red')
     plt.colorbar(im_unw, ax=ax, orientation='horizontal')
 
     fig.savefig("reference.png", dpi=300, bbox_inches='tight')

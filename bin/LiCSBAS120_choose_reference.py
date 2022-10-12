@@ -109,7 +109,7 @@ if __name__ == "__main__":
     im_con = ax[1, 0].imshow(block_con)
     im_hgt = ax[1, 1].imshow(block_rms_hgt, vmin=0, vmax=1/window_size)
     im_proxy = ax[0, 2].imshow(block_proxy)
-    im_example = ax[0, 2].imshow(unw_example, cmap=cm.RdBu)
+    im_example = ax[1, 2].imshow(unw_example, cmap=cm.RdBu)
 
     ax[0, 0].set_title("block_sum_unw")
     ax[0, 1].set_title("block_sum_coh")

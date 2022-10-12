@@ -166,10 +166,13 @@ if __name__ == "__main__":
             Path(correct_unw_dir).mkdir(parents=True, exist_ok=True)
 
             # Link unw
-            unwfile = os.path.join(args.frame_dir, args.unw_dir, pair, pair + '.unw')
+            unwfile = os.path.join(unwdir, pair, pair + '.unw')
             linkfile = os.path.join(correct_unw_dir, pair + '.unw')
             os.symlink(unwfile, linkfile)
-           
+            #relative_path = os.path.relpath(unwfile, correct_unw_dir+'/')
+            #os.symlink(relative_path, linkfile)
+            #shutil.copy(unwfile, correct_unw_dir)            
+
             ## plot_res
             plt.imshow(res_num_2pi, vmin=-2, vmax=2, cmap=cm.RdBu, interpolation='nearest')
             plt.title(pair+" RMS_res={:.2f}".format(res_rms))

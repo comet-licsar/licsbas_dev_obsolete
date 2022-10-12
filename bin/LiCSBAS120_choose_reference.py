@@ -93,7 +93,7 @@ if __name__ == "__main__":
     im_con = ax[1,0].imshow(block_con)
     im_hgt = ax[1,1].imshow(block_rms_hgt)
     plt.colorbar(im_unw, ax=ax[0,0])
-    plt.colorbar(im_coh, ax=ax[0.1])
+    plt.colorbar(im_coh, ax=ax[0,1])
     plt.colorbar(im_con, ax=ax[1,0])
     plt.colorbar(im_hgt, ax=ax[1,1])
     fig.savefig("reference.png", dpi=300, bbox_inches='tight')

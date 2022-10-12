@@ -91,7 +91,7 @@ if __name__ == "__main__":
     im_unw = ax[0,0].imshow(block_unw)
     im_coh = ax[0,1].imshow(block_coh)
     im_con = ax[1,0].imshow(block_con)
-    im_hgt = ax[1,1].imshow(block_rms_hgt)
+    im_hgt = ax[1,1].imshow(block_rms_hgt, vmin=0, vmax=0.8)
     plt.colorbar(im_unw, ax=ax[0,0])
     plt.colorbar(im_coh, ax=ax[0,1])
     plt.colorbar(im_con, ax=ax[1,0])

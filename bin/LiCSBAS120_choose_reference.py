@@ -85,7 +85,7 @@ if __name__ == "__main__":
     hgt_demean = hgt - broadcast_mean_hgt[:hgt.shape[0], :hgt.shape[1]]
     hgt_demean_square = hgt_demean ** 2
     block_rms_hgt = np.sqrt( block_sum(hgt_demean_square, window_size) / (window_size ** 2) )
-    block_rms_hgt = block_con / np.max(block_rms_hgt)
+    block_rms_hgt = block_rms_hgt / np.max(block_rms_hgt)
 
     fig, ax = plt.subplots(2, 2, sharey='all', sharex='all')
     im_unw = ax[0,0].imshow(block_unw)

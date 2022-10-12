@@ -92,19 +92,20 @@ if __name__ == "__main__":
     block_con[block_con == 0] = np.nan
     block_rms_hgt[block_rms_hgt == 0] = np.nan
 
-    fig, ax = plt.subplots(2, 2, sharey='all', sharex='all')
-    im_unw = ax[0,0].imshow(block_unw)
-    im_coh = ax[0,1].imshow(block_coh)
-    im_con = ax[1,0].imshow(block_con)
-    im_hgt = ax[1,1].imshow(block_rms_hgt, vmin=0, vmax=1/window_size)
-    plt.colorbar(im_unw, ax=ax[0,0])
-    plt.colorbar(im_coh, ax=ax[0,1])
-    plt.colorbar(im_con, ax=ax[1,0])
-    plt.colorbar(im_hgt, ax=ax[1,1])
-    ax[0, 0].set_title("total block_sum_unw")
-    ax[0, 1].set_title("total block_sum_coh")
-    ax[1, 0].set_title("total block_sum_comp_size")
-    ax[1, 1].set_title("total block_std_hgt")
+    fig, ax = plt.subplots(2, 3, sharey='all', sharex='all')
+    im_unw = ax[0, 0].imshow(block_unw)
+    im_coh = ax[0, 1].imshow(block_coh)
+    im_con = ax[1, 0].imshow(block_con)
+    im_hgt = ax[1, 1].imshow(block_rms_hgt, vmin=0, vmax=1/window_size)
+    block_proxy = block_unw * block_coh * block_con / block_rms_hgt
+    block_proxy = block_proxy / np.max(block_proxy)
+    im_proxy = ax[0, 2].imshow(block_proxy)
+    ax[0, 0].set_title("block_sum_unw")
+    ax[0, 1].set_title("block_sum_coh")
+    ax[1, 0].set_title("block_sum_comp_size")
+    ax[1, 1].set_title("block_std_hgt")
+    ax[1, 1].set_title("block_std_hgt")
+    ax[0, 2].set_title("proxy")
     fig.savefig("reference.png", dpi=300, bbox_inches='tight')
 
     fig, ax = plt.subplots(1, 2)

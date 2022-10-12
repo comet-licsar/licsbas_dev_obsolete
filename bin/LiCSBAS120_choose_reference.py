@@ -24,6 +24,7 @@ if __name__ == "__main__":
     parser.add_argument('-w', '--window_size', dest="win", default="5", type=float, help="Window size in km")
     args = parser.parse_args()
 
+    ### Define directories
     ifgdir = os.path.abspath(os.path.join(args.frame_dir, args.unw_dir))
     tsadir = os.path.abspath(os.path.join(args.frame_dir, args.ts_dir))
     resultsdir = os.path.join(tsadir, 'results')
@@ -53,11 +54,12 @@ if __name__ == "__main__":
     ifgdates = list(set(ifgdates)-set(bad_ifg11))
     ifgdates.sort()
 
-    # Start counting proxies for finding good references
+    ### Start counting indices for choosing the reference
     n_unw = np.zeros((length, width), dtype=np.float32)
     n_coh = np.zeros((length, width), dtype=np.float32)
     n_con = np.zeros((length, width), dtype=np.float32)
 
+    ### Accumulate through network (1)unw pixel counts, (2) coherence and (3) size of connected components
     for ifgd in ifgdates:
         # turn ifg into ones and zeros for non-nan and nan values
         unwfile = os.path.join(ifgdir, ifgd, ifgd+'.unw')
@@ -82,6 +84,7 @@ if __name__ == "__main__":
 
         del unw, coh, con
 
+    ### calculate block sum and normalise
     block_unw = block_sum(n_unw, window_size)
     block_coh = block_sum(n_coh, window_size)
     block_con = block_sum(n_con, window_size)
@@ -89,6 +92,7 @@ if __name__ == "__main__":
     block_coh = block_coh / np.max(block_coh)
     block_con = block_con / np.max(block_con)
 
+    ### calculate block standard deviation of height
     hgtfile = os.path.join(resultsdir, 'hgt')
     hgt = io_lib.read_img(hgtfile, length, width)
     block_mean_hgt = block_sum(hgt, window_size)/(window_size**2)
@@ -98,31 +102,39 @@ if __name__ == "__main__":
     hgt_demean_square = hgt_demean ** 2
     block_rms_hgt = np.sqrt( block_sum(hgt_demean_square, window_size) / (window_size ** 2) )
     block_rms_hgt = block_rms_hgt / np.max(block_rms_hgt)
+
     # low_block_rms_hgt = np.nanpercentile(block_rms_hgt, 10)
     # block_rms_hgt[block_rms_hgt < low_block_rms_hgt] = low_block_rms_hgt
 
     # block_rms_hgt[block_rms_hgt == 0] = 0.001
+
+    ### calculate proxy from 4 indices
     block_proxy = block_unw + block_coh + block_con - block_rms_hgt
     block_proxy = block_proxy / np.max(block_proxy)
 
+    ### turn 0 to nan for plotting
     block_unw[block_unw == 0] = np.nan
     block_coh[block_coh == 0] = np.nan
     block_con[block_con == 0] = np.nan
     block_rms_hgt[block_rms_hgt == 0] = np.nan
     block_proxy[block_proxy == 0] = np.nan
 
+    ### load example unw for plotting in block resolution
     unwfile = os.path.join(ifgdir, ifgd, ifgd + '.unw')
     unw = io_lib.read_img(unwfile, length, width)
     unw_example = block_sum(unw, window_size)
     unw_example[unw_example == 0] = np.nan
 
+    # plot figure
     fig, ax = plt.subplots(2, 3, sharey='all', sharex='all')
-    im_unw = ax[0, 0].imshow(block_unw)
-    im_coh = ax[0, 1].imshow(block_coh)
-    im_con = ax[1, 0].imshow(block_con)
-    im_hgt = ax[1, 1].imshow(block_rms_hgt, vmin=0, vmax=2/window_size)
+    im_unw = ax[0, 0].imshow(block_unw, vmin=0, vmax=1)
+    im_coh = ax[0, 1].imshow(block_coh, vmin=0, vmax=1)
+    im_con = ax[1, 0].imshow(block_con, vmin=0, vmax=1)
+    im_hgt = ax[1, 1].imshow(block_rms_hgt, vmin=0, vmax=1)
+    # im_hgt = ax[1, 1].imshow(block_rms_hgt, vmin=0, vmax=2/window_size)
     im_proxy = ax[0, 2].imshow(block_proxy)
     im_example = ax[1, 2].imshow(unw_example, cmap=cm.RdBu)
+    plt.colorbar(im_unw, ax=ax, orientation='horizontal')
 
     ax[0, 0].set_title("block_sum_unw")
     ax[0, 1].set_title("block_sum_coh")
@@ -131,6 +143,7 @@ if __name__ == "__main__":
     ax[0, 2].set_title("proxy")
     ax[1, 2].set_title("unw example")
 
+    ## choose distance closer to center
     # proxy_thresh = np.nanpercentile(block_proxy, 99)
     # refys, refxs = np.where(block_proxy > proxy_thresh)
     # print(refys, refxs, block_proxy[block_proxy < proxy_thresh])
@@ -152,9 +165,8 @@ if __name__ == "__main__":
     ax[0, 1].scatter(refx, refy, s=3, c='red')
     ax[1, 0].scatter(refx, refy, s=3, c='red')
     ax[1, 1].scatter(refx, refy, s=3, c='red')
-    plt.colorbar(im_unw, ax=ax, orientation='horizontal')
 
-    fig.savefig("reference.png", dpi=300, bbox_inches='tight')
+    fig.savefig(os.path.join(infodir, "120_reference.png"), dpi=300, bbox_inches='tight')
 
     # fig, ax = plt.subplots(1, 2)
     # ax[0].imshow(block_rms_hgt, vmin=0, vmax=1/window_size)

@@ -41,8 +41,19 @@ if __name__ == "__main__":
     window_size = int(abs(args.win / 110 / lattitude_resolution) + 0.5)   # 110 km per degree latitude
     print("\nWindow size : ", window_size)
 
+    #%% Read date, network information and size
+    ### Get dates
     ifgdates = tools_lib.get_ifgdates(ifgdir)
 
+    ### Read bad_ifg11 and rm_ifg
+    bad_ifg11file = os.path.join(infodir, '11bad_ifg.txt')
+    bad_ifg11 = io_lib.read_ifg_list(bad_ifg11file)
+
+    ### Remove bad ifgs and images from list
+    ifgdates = list(set(ifgdates)-set(bad_ifg11))
+    ifgdates.sort()
+
+    # Start counting proxies for finding good references
     n_unw = np.zeros((length, width), dtype=np.float32)
     n_coh = np.zeros((length, width), dtype=np.float32)
     n_con = np.zeros((length, width), dtype=np.float32)

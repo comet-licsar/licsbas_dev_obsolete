@@ -98,6 +98,8 @@ if __name__ == "__main__":
     hgt_demean_square = hgt_demean ** 2
     block_rms_hgt = np.sqrt( block_sum(hgt_demean_square, window_size) / (window_size ** 2) )
     block_rms_hgt = block_rms_hgt / np.max(block_rms_hgt)
+    low_block_rms_hgt = np.nanpercentile(block_rms_hgt, 5)
+    block_rms_hgt[block_rms_hgt < low_block_rms_hgt] = low_block_rms_hgt
 
     block_rms_hgt[block_rms_hgt == 0] = 0.001
     block_proxy = block_unw * block_coh * block_con / block_rms_hgt

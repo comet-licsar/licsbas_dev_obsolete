@@ -113,7 +113,7 @@ if __name__ == "__main__":
         thresh = args.thresh
     print("Correction threshold = {:2f}".format(thresh))
 
-    with open(os.path.join(infodir, '131ref_de-peaked.txt'), 'r') as f:
+    with open(os.path.join(infodir, '120ref.txt'), 'r') as f:
         for line in f.readlines():
             ref_x = int(line.split(":")[0])
             ref_y = int(line.split("/")[1].split(":")[0])

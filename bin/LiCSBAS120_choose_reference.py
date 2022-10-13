@@ -110,7 +110,7 @@ if __name__ == "__main__":
 
     ### calculate proxy from 4 indices
     block_proxy = block_unw + block_coh + block_con - block_rms_hgt
-    block_proxy = block_proxy / np.max(block_proxy)
+    block_proxy = block_proxy / np.nanmax(block_proxy)
 
     ### turn 0 to nan for plotting
     block_unw[block_unw == 0] = np.nan
@@ -157,6 +157,7 @@ if __name__ == "__main__":
 
     proxy_max = np.nanmax(block_proxy)
     refys, refxs = np.where(block_proxy == proxy_max)
+    print(proxy_max, refys, refxs)
     refy = refys[0]
     refx = refxs[0]
     ax[1, 2].scatter(refx, refy, s=3, c='red')

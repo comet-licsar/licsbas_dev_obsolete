@@ -261,7 +261,7 @@ def main(argv=None):
     ifgdir = os.path.abspath(ifgdir)
 
     if not tsadir:
-        tsadir = os.path.join(os.path.dirname(ifgdir), 'TS_'+os.path.basename(ifgdir))
+        tsadir = os.path.join(os.path.dirname(ifgdir), 'TS_'+os.path.basename(ifgdir)[:-10])
 
     if not os.path.isdir(tsadir):
         print('\nNo {} exists!'.format(tsadir), file=sys.stderr)
@@ -274,7 +274,7 @@ def main(argv=None):
     #
     # bad_ifg11file = os.path.join(infodir, '11bad_ifg.txt')
     # bad_ifg12file = os.path.join(infodir, '12bad_ifg.txt')
-    reffile = os.path.join(infodir, '131ref_de-peaked.txt')
+    reffile = os.path.join(infodir, '12ref.txt')
     if not os.path.exists(reffile): ## for old LiCSBAS12 < v1.1
         reffile = os.path.join(infodir, 'ref.txt')
 
@@ -313,8 +313,11 @@ def main(argv=None):
     with open(reffile, "r") as f:
         refarea = f.read().split()[0]  #str, x1/x2/y1/y2
     refx1, refx2, refy1, refy2 = [int(s) for s in re.split('[:/]', refarea)]
-
-
+    refx1=refx1-5
+    refx2=refx2+5
+    refy1=refy1-5
+    refy2=refy2+5
+    
     #%% Read data information
     ### Get size
     mlipar = os.path.join(ifgdir, 'slc.mli.par')
@@ -452,7 +455,7 @@ def main(argv=None):
     print('# of images to be used : {}'.format(n_im))
     print('# of all ifgs          : {}'.format(n_ifg_all))
     print('# of ifgs to be used   : {}'.format(n_ifg))
-    print('# of removed ifgs      : {}'.format(n_ifg_bad))
+#    print('# of removed ifgs      : {}'.format(n_ifg_bad))
     print('Threshold of used unw  : {}'.format(n_unw_thre))
     print('')
     print('Reference area (X/Y)   : {}:{}/{}:{}'.format(refx1, refx2, refy1, refy2))
@@ -469,7 +472,7 @@ def main(argv=None):
         print('n_im:           {}'.format(n_im), file=f)
         print('n_ifg_all:      {}'.format(n_ifg_all), file=f)
         print('n_ifg:          {}'.format(n_ifg), file=f)
-        print('n_ifg_bad:      {}'.format(n_ifg_bad), file=f)
+ #       print('n_ifg_bad:      {}'.format(n_ifg_bad), file=f)
         print('n_unw_thre:     {}'.format(n_unw_thre), file=f)
         print('ref_area:       {}:{}/{}:{}'.format(refx1, refx2, refy1, refy2), file=f)
         print('memory_size:    {} MB'.format(memory_size), file=f)
@@ -481,23 +484,31 @@ def main(argv=None):
 
 
     #%% Ref phase for inversion
+    print(refx1, refx2, refy1, refy2)
     lengththis = refy2-refy1
+    print(lengththis)
     countf = width*refy1
     countl = width*lengththis # Number to be read
+    print(countf, countl)
     ref_unw = []
     for i, ifgd in enumerate(ifgdates):
         unwfile = os.path.join(ifgdir, ifgd, ifgd+'.unw')
-        f = open(unwfile, 'rb')
+        if os.path.islink(unwfile):
+            f = open(os.readlink(unwfile), 'rb')
+        else:
+            f = open(unwfile, 'rb')
         f.seek(countf*4, os.SEEK_SET) #Seek for >=2nd path, 4 means byte
 
         ### Read unw data (mm) at ref area
         unw = np.fromfile(f, dtype=np.float32, count=countl).reshape((lengththis, width))[:, refx1:refx2]*coef_r2m
-
+        print(unw)
         unw[unw == 0] = np.nan
         if np.all(np.isnan(unw)):
             print('All nan in ref area in {}.'.format(ifgd))
             print('Rerun LiCSBAS12.')
-            return 1
+            import pdb
+            pdb.set_trace()
+            #return 1
 
         ref_unw.append(np.nanmean(unw))
 
@@ -551,7 +562,10 @@ def main(argv=None):
         countl = width*lengththis
         for i, ifgd in enumerate(ifgdates):
             unwfile = os.path.join(ifgdir, ifgd, ifgd+'.unw')
-            f = open(unwfile, 'rb')
+            if os.path.islink(unwfile):
+                f = open(os.readlink(unwfile), 'rb')
+            else:
+                f = open(unwfile, 'rb')
             f.seek(countf*4, os.SEEK_SET) #Seek for >=2nd patch, 4 means byte
 
             ### Read unw data (mm) at patch area

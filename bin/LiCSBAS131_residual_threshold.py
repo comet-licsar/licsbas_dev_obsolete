@@ -101,8 +101,8 @@ if __name__ == "__main__":
         # calculate rms de-peaked residuals
         for i in range(len(res_rms_list)):
             sumsq_de_peaked_res += abs(res_num_2pi.reshape((azimuth_lines, range_samples)))
-            print(res_num_2pi.reshape((azimuth_lines, range_samples))[500:505, 249:253])
-            print(sumsq_de_peaked_res[500:505, 249:253])
+            # print(res_num_2pi.reshape((azimuth_lines, range_samples))[500:505, 249:253])
+            # print(sumsq_de_peaked_res[500:505, 249:253])
     fig, ax = plt.subplots(1, 3)
     # calculate rms de-peaked residuals
     rms_de_peaked_res = np.sqrt(sumsq_de_peaked_res/len(res_rms_list))
@@ -124,19 +124,19 @@ if __name__ == "__main__":
     plt.colorbar(mask, ax=ax[1], orientation='horizontal')
     print(min_n_gap)    
 
-    ### Find stable reference
-    min_rms = np.nanmin(rms_de_peaked_res)
-    refy1s, refx1s = np.where(rms_de_peaked_res == min_rms)
-    print(refy1s, refx1s, min_rms)
-    print(rms_de_peaked_res[refy1s[0]-5:refy1s[0]+5, refx1s[0]-5:refx1s[0]+5])
-    ax[2].scatter(refx1s, refy1s)
-    ax[2].scatter(refx1s[0], refy1s[0])
-    fig.savefig(infodir+"/131RMS_ifg_res_ref.png", dpi=300)
-    refy1s, refx1s = refy1s[0], refx1s[0]  ## Only first index
-    refy2s, refx2s = refy1s+1, refx1s+1
-    print('Selected ref: {}:{}/{}:{}'.format(refx1s, refx2s, refy1s, refy2s), flush=True)
-
-    ### Save ref
-    refsfile = os.path.join(infodir, '131ref_de-peaked.txt')
-    with open(refsfile, 'w') as f:
-        print('{}:{}/{}:{}'.format(refx1s, refx2s, refy1s, refy2s), file=f)
+    # ### Find stable reference
+    # min_rms = np.nanmin(rms_de_peaked_res)
+    # refy1s, refx1s = np.where(rms_de_peaked_res == min_rms)
+    # print(refy1s, refx1s, min_rms)
+    # # print(rms_de_peaked_res[refy1s[0]-5:refy1s[0]+5, refx1s[0]-5:refx1s[0]+5])
+    # ax[2].scatter(refx1s, refy1s)
+    # ax[2].scatter(refx1s[0], refy1s[0])
+    # fig.savefig(infodir+"/131RMS_ifg_res_ref.png", dpi=300)
+    # refy1s, refx1s = refy1s[0], refx1s[0]  ## Only first index
+    # refy2s, refx2s = refy1s+1, refx1s+1
+    # print('Selected ref: {}:{}/{}:{}'.format(refx1s, refx2s, refy1s, refy2s), flush=True)
+    #
+    # ### Save ref
+    # refsfile = os.path.join(infodir, '131ref_de-peaked.txt')
+    # with open(refsfile, 'w') as f:
+    #     print('{}:{}/{}:{}'.format(refx1s, refx2s, refy1s, refy2s), file=f)

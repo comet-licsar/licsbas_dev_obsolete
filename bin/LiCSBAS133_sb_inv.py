@@ -268,7 +268,7 @@ def main(argv=None):
         return 1
 
     tsadir = os.path.abspath(tsadir)
-    resultsdir = os.path.join(tsadir, 'results')
+    resultsdir = os.path.join(tsadir, '133results')
     infodir = os.path.join(tsadir, 'info')
     netdir = os.path.join(tsadir, 'network')
     #
@@ -452,7 +452,7 @@ def main(argv=None):
     print('# of images to be used : {}'.format(n_im))
     print('# of all ifgs          : {}'.format(n_ifg_all))
     print('# of ifgs to be used   : {}'.format(n_ifg))
-    print('# of removed ifgs      : {}'.format(n_ifg_bad))
+    #print('# of removed ifgs      : {}'.format(n_ifg_bad))
     print('Threshold of used unw  : {}'.format(n_unw_thre))
     print('')
     print('Reference area (X/Y)   : {}:{}/{}:{}'.format(refx1, refx2, refy1, refy2))
@@ -469,7 +469,7 @@ def main(argv=None):
         print('n_im:           {}'.format(n_im), file=f)
         print('n_ifg_all:      {}'.format(n_ifg_all), file=f)
         print('n_ifg:          {}'.format(n_ifg), file=f)
-        print('n_ifg_bad:      {}'.format(n_ifg_bad), file=f)
+     #   print('n_ifg_bad:      {}'.format(n_ifg_bad), file=f)
         print('n_unw_thre:     {}'.format(n_unw_thre), file=f)
         print('ref_area:       {}:{}/{}:{}'.format(refx1, refx2, refy1, refy2), file=f)
         print('memory_size:    {} MB'.format(memory_size), file=f)

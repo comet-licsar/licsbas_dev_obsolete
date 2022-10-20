@@ -203,7 +203,9 @@ def main(argv=None):
     parser.add_argument('--gpu', default=False, action='store_true', help="Use GPU (Need cupy module)")
     parser.add_argument('--fast', default=False, action='store_true', help="Use more economic NSBAS computation (should be faster and less demanding, may bring errors in points with many gaps)")
     parser.add_argument('--only_sb', default=False, action='store_true', help="Perform only SB processing (skipping points with NaNs)")
-    args = parser.parse_args(argv)
+    # args = parser.parse_args(argv)
+    args = parser.parse_args()
+
 
     if args.gpu:
         print("\nGPU option is activated. Need cupy module.\n")

@@ -269,6 +269,7 @@ def main(argv=None):
 
     tsadir = os.path.abspath(tsadir)
     resultsdir = os.path.join(tsadir, '133results')
+    if not os.path.exists(resultsdir): os.mkdir(resultsdir)
     infodir = os.path.join(tsadir, 'info')
     netdir = os.path.join(tsadir, 'network')
     #

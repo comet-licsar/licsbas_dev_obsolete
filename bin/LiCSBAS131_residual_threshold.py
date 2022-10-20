@@ -42,15 +42,14 @@ if __name__ == "__main__":
     parser.add_argument('-f', "--frame_dir", default="./", help="directory of LiCSBAS output of a particular frame")
     parser.add_argument('-g', '--unw_dir', default="GEOCml10GACOS", help="folder containing slc.mli.par")
     parser.add_argument('-t', '--ts_dir', default="TS_GEOCml10GACOS", help="folder containing time series")
-    parser.add_argument('-p', '--percentile', default="80", type=float, help="percentile RMS for thresholding")
-    parser.add_argument('--input_suffix', default="", type=str, help="suffix of the input")
-    parser.add_argument('--output_suffix', default="", type=str, help="suffix of the output")
+    parser.add_argument('-p', '--percentile', default=80, type=float, help="percentile RMS for thresholding")
+    parser.add_argument('--suffix', default="", type=str, help="suffix of both input and output")
     args = parser.parse_args()
 
     # define input directories
     unwdir = os.path.abspath(os.path.join(args.frame_dir, args.unw_dir))
     tsadir = os.path.abspath(os.path.join(args.frame_dir, args.ts_dir))
-    resdir = os.path.join(tsadir, '13resid'+args.input_suffix)
+    resdir = os.path.join(tsadir, '13resid'+args.suffix)
 
     # define output directories
     infodir = os.path.join(tsadir, 'info')
@@ -81,7 +80,7 @@ if __name__ == "__main__":
     # sumsq_de_peaked_res = np.zeros((length, width), dtype=np.float32)
 
     print('Reading residual maps from {}'.format(resdir))
-    restxtfile = os.path.join(infodir, '131resid_2pi{}.txt'.format(args.output_suffix))
+    restxtfile = os.path.join(infodir, '131resid_2pi{}.txt'.format(args.suffix))
     if os.path.exists(restxtfile): os.remove(restxtfile)
     with open(restxtfile, "w") as f:
         print('# RMS of residual (in number of 2pi)', file=f)
@@ -107,7 +106,7 @@ if __name__ == "__main__":
         plt.axvline(x=peak_ifg_res_rms, color='r', linestyle='--')
         plt.axvline(x=threshold, color='r')
         plt.title("Residual, peak = {:2f}, {}% = {:2f}".format(peak_ifg_res_rms, int(args.percentile), threshold))
-        plt.savefig(infodir+"/131RMS_ifg_res_hist{}.png".format(args.output_suffix), dpi=300)
+        plt.savefig(infodir+"/131RMS_ifg_res_hist{}.png".format(args.suffix), dpi=300)
         
         print('RMS_peak: {:5.2f}'.format(peak_ifg_res_rms), file=f)
         print('RMS_percentile: {}'.format(int(args.percentile), ), file=f)

@@ -2,28 +2,31 @@
 """
 v1.0 20220928 Qi Ou, Leeds Uni
 
-This script calculates a histogram of each residual map converted into factors of 2pi radian,
-offsets the residual map by the histogram peak to remove any bias from referencing effect
-then calculate the RMS of the de-peaked residual
-plots and saves a histogram of all RMS of all ifgs,
-sets 80 percentile of RMS ifg residuals in 2pi radian as the threshold for step 132_3D_correction.py
+This script
+(1) calculates a histogram of each residual map converted into factors of 2pi radian,
+(2) offsets the residual map by the histogram peak to remove any bias from referencing effect
+(3) calculate and saves the RMS of the de-peaked residual as multiples of 2pi [.txt]
+(4) plots and saves a histogram[.png] of all RMS of all ifgs
+(5) sets a threshold [.txt] for automatic correction with 132_3D_correction.py
 
 ===============
 Input & output files
 ===============
 
+Inputs in GEOCml*/ :
+ - slc.mli.par
+
 Inputs in TS_GEOCml*/ :
  - 13resid/
    - yyyymmdd_yyyymmdd.res
- - info/
-   - 13parameters.txt     : parameter file generated after step 13sb_inv
 
 Outputs in TS_GEOCml*/ :
  - info/
-   - 131resid_2pi.txt        : RMS of the de-peaked residuals as factors of 2pi radian
-   - 131ref_de-peaked.txt    : reference point chosen as the pixel with minimum residual
-   - 131RMS_ifg_res_hist.png : plot of histogram with a vertical bar indicating 80%
+   - 131resid_2pi{suffix}.txt        : RMS of the de-peaked residuals as factors of 2pi radian
+   - 131RMS_ifg_res_hist{suffix}.png : plot of histogram with a vertical bar indicating threshold
  """
+# - 131ref_de-peaked.txt    : reference point chosen as the pixel with minimum residual
+
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -37,35 +40,48 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description="Detect coregistration error")
     parser.add_argument('-f', "--frame_dir", default="./", help="directory of LiCSBAS output of a particular frame")
-    parser.add_argument('-g', '--GEOCml_dir', dest="unw_dir", default="GEOCml10GACOS", help="folder containing unw input")
-    parser.add_argument('-t', '--ts_dir', dest="ts_dir", default="TS_GEOCml10GACOS", help="folder containing time series")
-    parser.add_argument('-p', '--percentile', dest="thresh", default="80", type=float, help="percentile RMS for thresholding")
+    parser.add_argument('-g', '--unw_dir', default="GEOCml10GACOS", help="folder containing slc.mli.par")
+    parser.add_argument('-t', '--ts_dir', default="TS_GEOCml10GACOS", help="folder containing time series")
+    parser.add_argument('-p', '--percentile', default="80", type=float, help="percentile RMS for thresholding")
+    parser.add_argument('--input_suffix', default="", type=str, help="suffix of the input")
+    parser.add_argument('--output_suffix', default="", type=str, help="suffix of the output")
     args = parser.parse_args()
 
-    speed_of_light = 299792458  # m/s
-    radar_frequency = 5405000000.0  # Hz
-    wavelength = speed_of_light / radar_frequency
-    coef_r2m = -wavelength / 4 / np.pi * 1000
-
+    # define input directories
     unwdir = os.path.abspath(os.path.join(args.frame_dir, args.unw_dir))
     tsadir = os.path.abspath(os.path.join(args.frame_dir, args.ts_dir))
-    resultsdir = os.path.join(tsadir, 'results')
+    resdir = os.path.join(tsadir, '13resid'+args.input_suffix)
+
+    # define output directories
     infodir = os.path.join(tsadir, 'info')
-    netdir = os.path.join(tsadir, 'network')
-    resdir = os.path.join(tsadir, '13resid')
 
-    with open(os.path.join(infodir, '13parameters.txt'), 'r') as f:
-        for line in f.readlines():
-            if 'range_samples' in line:
-                range_samples = int(line.split()[1])
-            if 'azimuth_lines' in line:
-                azimuth_lines = int(line.split()[1])
+    # read ifg size and satellite frequency
+    mlipar = os.path.join(unwdir, 'slc.mli.par')
+    width = int(io_lib.get_param_par(mlipar, 'range_samples'))
+    length = int(io_lib.get_param_par(mlipar, 'azimuth_lines'))
+    radar_frequency = float(io_lib.get_param_par(mlipar, 'radar_frequency'))  # 5405000000.0 Hz for C-band
+    speed_of_light = 299792458  # m/s
+    wavelength = speed_of_light/radar_frequency
+    coef_r2m = -wavelength/4/np.pi*1000
 
-    #%% Start finding low residual ref point
-    sumsq_de_peaked_res = np.zeros((azimuth_lines, range_samples), dtype=np.float32)
+
+    # resultsdir = os.path.join(tsadir, 'results'+args.out_suffix)
+    # if os.path.exists(resultsdir): os.remove(resultsdir)
+
+    # netdir = os.path.join(tsadir, 'network')
+
+    # with open(os.path.join(infodir, '13parameters.txt'), 'r') as f:
+    #     for line in f.readlines():
+    #         if 'range_samples' in line:
+    #             range_samples = int(line.split()[1])
+    #         if 'azimuth_lines' in line:
+    #             azimuth_lines = int(line.split()[1])
+
+    # #%% Start finding low residual ref point
+    # sumsq_de_peaked_res = np.zeros((length, width), dtype=np.float32)
 
     print('Reading residual maps from {}'.format(resdir))
-    restxtfile = os.path.join(infodir,'131resid_2pi.txt')
+    restxtfile = os.path.join(infodir, '131resid_2pi{}.txt'.format(args.output_suffix))
     if os.path.exists(restxtfile): os.remove(restxtfile)
     with open(restxtfile, "w") as f:
         print('# RMS of residual (in number of 2pi)', file=f)
@@ -87,42 +103,43 @@ if __name__ == "__main__":
 
         count_ifg_res_rms, bin_edges, patches = plt.hist(res_rms_list, np.arange(0, 3, 0.1))
         peak_ifg_res_rms = bin_edges[count_ifg_res_rms.argmax()]+0.05
-        threshold = np.nanpercentile(res_rms_list, args.thresh)
-        plt.axvline(x=peak_ifg_res_rms, color='r')
+        threshold = np.nanpercentile(res_rms_list, args.percentile)
+        plt.axvline(x=peak_ifg_res_rms, color='r', linestyle='--')
         plt.axvline(x=threshold, color='r')
-        plt.title("Residual, peak = {:2f}, {}% = {:2f}".format(peak_ifg_res_rms, int(args.thresh), threshold))
-        plt.savefig(infodir+"/131RMS_ifg_res_hist.png", dpi=300)
+        plt.title("Residual, peak = {:2f}, {}% = {:2f}".format(peak_ifg_res_rms, int(args.percentile), threshold))
+        plt.savefig(infodir+"/131RMS_ifg_res_hist{}.png".format(args.output_suffix), dpi=300)
         
         print('RMS_peak: {:5.2f}'.format(peak_ifg_res_rms), file=f)
-        print('RMS_percentile: {}'.format(int(args.thresh), ), file=f)
+        print('RMS_percentile: {}'.format(int(args.percentile), ), file=f)
         print('RMS_thresh: {:5.2f}'.format(threshold), file=f)
-        print('IFG RMS res, peak = {:2f}, {}% = {:2f}'.format(peak_ifg_res_rms, int(args.thresh), threshold))
 
-        # calculate rms de-peaked residuals
-        for i in range(len(res_rms_list)):
-            sumsq_de_peaked_res += abs(res_num_2pi.reshape((azimuth_lines, range_samples)))
-            # print(res_num_2pi.reshape((azimuth_lines, range_samples))[500:505, 249:253])
-            # print(sumsq_de_peaked_res[500:505, 249:253])
-    fig, ax = plt.subplots(1, 3)
+        print('IFG RMS res, peak = {:2f}, {}% = {:2f}'.format(peak_ifg_res_rms, int(args.percentile), threshold))
+
+        # # calculate rms de-peaked residuals
+        # for i in range(len(res_rms_list)):
+        #     sumsq_de_peaked_res += abs(res_num_2pi.reshape((length, width)))
+        #     # print(res_num_2pi.reshape((azimuth_lines, range_samples))[500:505, 249:253])
+        #     # print(sumsq_de_peaked_res[500:505, 249:253])
+    # fig, ax = plt.subplots(1, 3)
     # calculate rms de-peaked residuals
-    rms_de_peaked_res = np.sqrt(sumsq_de_peaked_res/len(res_rms_list))
-    vmin = np.nanpercentile(rms_de_peaked_res, 1)
-    vmax = np.nanpercentile(rms_de_peaked_res, 95)
-    im = ax[0].imshow(rms_de_peaked_res, vmin=vmin, vmax=vmax)    
-    ax[0].set_title("RMS_de-peaked_Res")
-    ### Mask residual by minimum n_gap
-    n_gap = io_lib.read_img(os.path.join(resultsdir, 'n_gap'), azimuth_lines, range_samples)
-    min_n_gap = np.nanmin(n_gap)
-    mask_n_gap = np.float32(n_gap==min_n_gap)
-    mask_n_gap[mask_n_gap == 0] = np.nan
-    rms_de_peaked_res = rms_de_peaked_res*mask_n_gap
-    mask=ax[1].imshow(mask_n_gap)
-    ax[1].set_title("n_gap")
-    ax[2].imshow(rms_de_peaked_res, vmin=vmin, vmax=vmax)
-    ax[2].set_title("Masked RMS")
-    plt.colorbar(im, ax=ax, orientation='horizontal')
-    plt.colorbar(mask, ax=ax[1], orientation='horizontal')
-    print(min_n_gap)    
+    # rms_de_peaked_res = np.sqrt(sumsq_de_peaked_res/len(res_rms_list))
+    # vmin = np.nanpercentile(rms_de_peaked_res, 1)
+    # vmax = np.nanpercentile(rms_de_peaked_res, 95)
+    # im = ax[0].imshow(rms_de_peaked_res, vmin=vmin, vmax=vmax)
+    # ax[0].set_title("RMS_de-peaked_Res")
+    # ### Mask residual by minimum n_gap
+    # n_gap = io_lib.read_img(os.path.join(resultsdir, 'n_gap'), length, width)
+    # min_n_gap = np.nanmin(n_gap)
+    # mask_n_gap = np.float32(n_gap==min_n_gap)
+    # mask_n_gap[mask_n_gap == 0] = np.nan
+    # rms_de_peaked_res = rms_de_peaked_res*mask_n_gap
+    # mask=ax[1].imshow(mask_n_gap)
+    # ax[1].set_title("n_gap")
+    # ax[2].imshow(rms_de_peaked_res, vmin=vmin, vmax=vmax)
+    # ax[2].set_title("Masked RMS")
+    # plt.colorbar(im, ax=ax, orientation='horizontal')
+    # plt.colorbar(mask, ax=ax[1], orientation='horizontal')
+    # print(min_n_gap)
 
     # ### Find stable reference
     # min_rms = np.nanmin(rms_de_peaked_res)

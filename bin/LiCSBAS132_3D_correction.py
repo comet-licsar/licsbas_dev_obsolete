@@ -13,23 +13,33 @@ run from inside the 13resid folder of LiCSBAS output with "../info/slc.mli.par" 
 Input & output files
 ===============
 
-Inputs in GEOCml*/ :
+Inputs in GEOCml*/ (--comp_cc_dir):
  - baselines
+ - slc.mli.par
+ - yyyymmdd_yyyymmdd/
+   - yyyymmdd_yyyymmdd.conncomp
+   - yyyymmdd_yyyymmdd.cc
+
+Inputs in GEOCml*/ (--unw_dir):
+ - yyyymmdd_yyyymmdd/
+   - yyyymmdd_yyyymmdd.unw
+
 Inputs in TS_GEOCml*/ :
- - 13resid/
+ - 13resid*/ (--resid_dir)
    - yyyymmdd_yyyymmdd.res
  - info/
-   - 13parameters.txt     : parameter file generated after step 13sb_inv
-   - 131resid_2pi.txt     : RMS residuals per IFG computed in radian and as a factor of 2pi
-   - 131ref_de-peaked.txt : Reference point chosen in step 131 based on minimum de-peaked residual and low network gap
+   - 131resid_2pi*.txt     : RMS residuals per IFG computed in radian and as a factor of 2pi
 
 Outputs in TS_GEOCml*/ :
- - 13resid/
-   - *correction/      : Folders with pngs showing the correction category
+ - 13resid*/ (--resid_dir)
+   - good_ifg_no_correction/*png : residuals of uncorrected ifgs
+   - bad_ifg_no_correction/*png  : residuals and nearest integers showing why ifgs can't be corrected
+   - integer_correction/*png     : ifgs corrected by nearest residual integer (when mode doesn't work)
+   - mode_correction/*png        : ifgs corrected by component mode (preferred)
  - info/
-   - 132*.txt          : list of ifgs in each category (bad, good, integer-corrected, mode-corrected)
+   - 132*.txt          : Lists of ifgs corrected by each category (good, bad, integer_corrected, mode_corrected)
  - network/
-   - network132*.png   : Figures of the network
+   - network132*.png   : Figures of the network with/without corrected ifgs, with bad ifgs removed
  """
 
 from scipy import stats
@@ -82,43 +92,30 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description="Detect coregistration error")
     parser.add_argument('-f', "--frame_dir", default="./", help="directory of LiCSBAS output of a particular frame")
-    parser.add_argument('-g', '--GEOCml_dir', dest="unw_dir", default="GEOCml10GACOS", help="folder containing unw input")
-    parser.add_argument('-t', '--ts_dir', dest="ts_dir", default="TS_GEOCml10GACOS", help="folder containing time series")
-    parser.add_argument('-r', '--rms_thresh', dest="thresh", default=0.5, help="threshold RMS residual per ifg as a fraction of 2 pi radian, used if info/131resid_2pi.txt doesn't exist")
+    parser.add_argument('-c', '--comp_cc_dir', default="GEOCml10GACOS", help="folder containing connected components and cc files")
+    parser.add_argument('-g', '--unw_dir', default="GEOCml10GACOS", help="folder containing unw input to be corrected")
+    parser.add_argument('-r', '--correct_dir', default="GEOCml10GACOS_corrected", help="folder containing corrected unw input")
+    # parser.add_argument('-s', '--resid_dir', default="13resid", help="folder containing .res files")
+    parser.add_argument('-t', '--ts_dir', default="TS_GEOCml10GACOS", help="folder containing time series")
+    parser.add_argument('-r', '--thresh', default=0.5, help="threshold RMS residual per ifg as a fraction of 2 pi radian, used if info/131resid_2pi.txt doesn't exist")
+    parser.add_argument('--suffix', default="", type=str, help="suffix of the input 131resid_2pi*.txt and outputs")
+    # parser.add_argument('--output_suffix', default="", type=str, help="suffix of the output")
     args = parser.parse_args()
 
-    speed_of_light = 299792458  # m/s
-    radar_frequency = 5405000000.0  # Hz
-    wavelength = speed_of_light/radar_frequency
-    coef_r2m = -wavelength/4/np.pi*1000
-
+    # define input directories
+    ccdir = os.path.abspath(os.path.join(args.frame_dir, args.comp_cc_dir))
     unwdir = os.path.abspath(os.path.join(args.frame_dir, args.unw_dir))
     tsadir = os.path.abspath(os.path.join(args.frame_dir, args.ts_dir))
-    resultsdir = os.path.join(tsadir, 'results')
+    resdir = os.path.join(tsadir, '130resid{}'.format(args.suffix))
     infodir = os.path.join(tsadir, 'info')
+
+    # define output directories
     netdir = os.path.join(tsadir, 'network')
-    resdir = os.path.join(tsadir, '13resid')
 
-    with open(os.path.join(infodir, '13parameters.txt'), 'r') as f:
-        for line in f.readlines():
-            if 'range_samples' in line:
-                range_samples = int(line.split()[1])
-            if 'azimuth_lines' in line:
-                azimuth_lines = int(line.split()[1])
+    correct_dir = os.path.abspath(os.path.join(args.frame_dir, args.correct_dir))
+    if os.path.exists(correct_dir): shutil.rmtree(correct_dir)
+    Path(correct_dir).mkdir(parents=True, exist_ok=True)
 
-    resid_threshold_file = os.path.join(infodir, '131resid_2pi.txt')
-    if os.path.exists(resid_threshold_file):
-        thresh = float(io_lib.get_param_par(resid_threshold_file, 'RMS_thresh'))
-    else:
-        thresh = args.thresh
-    print("Correction threshold = {:2f}".format(thresh))
-
-    with open(os.path.join(infodir, '120ref.txt'), 'r') as f:
-        for line in f.readlines():
-            ref_x = int(line.split(":")[0])
-            ref_y = int(line.split("/")[1].split(":")[0])
-
-    # set up png directories
     good_png_dir = os.path.join(resdir, 'good_ifg_no_correction/')
     if os.path.exists(good_png_dir): shutil.rmtree(good_png_dir)
     Path(good_png_dir).mkdir(parents=True, exist_ok=True)
@@ -135,12 +132,28 @@ if __name__ == "__main__":
     if os.path.exists(mode_png_dir): shutil.rmtree(mode_png_dir)
     Path(mode_png_dir).mkdir(parents=True, exist_ok=True)
 
-    corrected_unw_dir = os.path.join(args.frame_dir, args.unw_dir + "_corrected")
-    if os.path.exists(corrected_unw_dir): shutil.rmtree(corrected_unw_dir)
-    Path(corrected_unw_dir).mkdir(parents=True, exist_ok=True)
-    os.symlink(os.path.join(unwdir, 'slc.mli.par'), os.path.join(corrected_unw_dir, 'slc.mli.par'))
-    os.symlink(os.path.join(unwdir, 'EQA.dem_par'), os.path.join(corrected_unw_dir, 'EQA.dem_par'))
+    # read ifg size and satellite frequency
+    mlipar = os.path.join(ccdir, 'slc.mli.par')
+    width = int(io_lib.get_param_par(mlipar, 'range_samples'))
+    length = int(io_lib.get_param_par(mlipar, 'azimuth_lines'))
+    radar_frequency = float(io_lib.get_param_par(mlipar, 'radar_frequency'))  # 5405000000.0 Hz for C-band
+    speed_of_light = 299792458  # m/s
+    wavelength = speed_of_light/radar_frequency
+    coef_r2m = -wavelength/4/np.pi*1000
 
+    # read threshold value
+    resid_threshold_file = os.path.join(infodir, '131resid_2pi{}.txt'.format(args.suffix))
+    if os.path.exists(resid_threshold_file):
+        thresh = float(io_lib.get_param_par(resid_threshold_file, 'RMS_thresh'))
+    else:
+        thresh = args.thresh
+    print("Correction threshold = {:2f}".format(thresh))
+
+    # read reference for plotting purpose
+    with open(os.path.join(infodir, '120ref.txt'), 'r') as f:
+        for line in f.readlines():
+            ref_x = int(line.split(":")[0])
+            ref_y = int(line.split("/")[1].split(":")[0])
 
     # set up empty ifg lists
     good_ifg = []
@@ -148,10 +161,12 @@ if __name__ == "__main__":
     ifg_corrected_by_integer = []
     bad_ifg_not_corrected = []
 
+    # automatic correction
     for i in glob.glob(os.path.join(resdir, '*.res')):
+        # read input res
         pair = os.path.basename(i).split('.')[0][-17:]
         print(pair)
-        res_mm = np.fromfile(i, dtype=np.float32).reshape((azimuth_lines, range_samples))
+        res_mm = np.fromfile(i, dtype=np.float32).reshape((length, width))
         res_rad = res_mm / coef_r2m
         res_num_2pi = res_rad / 2 / np.pi
         counts, bins = np.histogram(res_num_2pi.flatten(), np.arange(-2.5, 2.6, 0.1))
@@ -159,16 +174,18 @@ if __name__ == "__main__":
         res_num_2pi = res_num_2pi - peak
         res_rms = np.sqrt(np.nanmean(res_num_2pi**2))
 
+        # define output dir
+        correct_pair_dir = os.path.join(correct_dir, pair)
+        Path(correct_pair_dir).mkdir(parents=True, exist_ok=True)
+
         if res_rms < thresh:
             good_ifg.append(pair)
             print("RMS residual = {:.2f}, good...".format(res_rms))
-            correct_unw_dir = os.path.join(args.frame_dir, args.unw_dir + "_corrected", pair)
-            Path(correct_unw_dir).mkdir(parents=True, exist_ok=True)
 
             # Link unw
             unwfile = os.path.join(unwdir, pair, pair + '.unw')
-            linkfile = os.path.join(correct_unw_dir, pair + '.unw')
-            os.symlink(unwfile, linkfile)
+            linkfile = os.path.join(correct_pair_dir, pair + '.unw')
+            os.link(unwfile, linkfile)
             #relative_path = os.path.relpath(unwfile, correct_unw_dir+'/')
             #os.symlink(relative_path, linkfile)
             #shutil.copy(unwfile, correct_unw_dir)            
@@ -210,13 +227,13 @@ if __name__ == "__main__":
 
             else:
                 # read in unwrapped ifg and connected components
-                unwfile = os.path.join(args.frame_dir, args.unw_dir, pair, pair + '.unw')
-                con_file = os.path.join(args.frame_dir, args.unw_dir, pair, pair+'.conncomp')
-                unw = np.fromfile(unwfile, dtype=np.float32).reshape((azimuth_lines, range_samples))
-                con = np.fromfile(con_file, dtype=np.int8).reshape((azimuth_lines, range_samples))
+                unwfile = os.path.join(unwdir, pair, pair + '.unw')
+                con_file = os.path.join(ccdir, pair, pair+'.conncomp')
+                unw = np.fromfile(unwfile, dtype=np.float32).reshape((length, width))
+                con = np.fromfile(con_file, dtype=np.int8).reshape((length, width))
 
                 # calculate component modes
-                uniq_components = np.unique(con.flatten())[1:]
+                uniq_components = np.unique(con.flatten())[1:]  # use [1:] to exclude the 0th component
                 res_mode = copy.copy(res_integer)
                 for j in uniq_components:
                     component_values = res_integer[con == j]
@@ -246,30 +263,31 @@ if __name__ == "__main__":
                 plot_correction()
 
                 # save the corrected unw
-                Path("{}/{}_corrected/{}/".format(args.frame_dir, args.unw_dir, pair)).mkdir(parents=True, exist_ok=True)
-                unw_corrected.flatten().tofile("{}/{}_corrected/{}/{}.unw".format(args.frame_dir, args.unw_dir, pair, pair))
+                # Path("{}/{}_corrected/{}/".format(correct_dir, pair)).mkdir(parents=True, exist_ok=True)
+                # unw_corrected.flatten().tofile("{}/{}_corrected/{}/{}.unw".format(args.frame_dir, args.unw_dir, pair, pair))
+                unw_corrected.flatten().tofile(os.path.join(correct_pair_dir, pair + '.unw'))
                 del con, unw, unw_corrected, res_num_2pi, res_integer, res_mm, res_rad, res_rms, correction_title
 
     #%% save ifg lists to text files.
-    bad_ifg_file = os.path.join(infodir, '132bad_ifg.txt')
+    bad_ifg_file = os.path.join(infodir, '132bad_ifg{}.txt'.format(args.suffix))
     if os.path.exists(bad_ifg_file): os.remove(bad_ifg_file)
     with open(bad_ifg_file, 'w') as f:
         for i in bad_ifg_not_corrected:
             print('{}'.format(i), file=f)
 
-    mode_ifg_file = os.path.join(infodir, '132corrected_by_component_mode_ifg.txt')
+    mode_ifg_file = os.path.join(infodir, '132corrected_by_component_mode_ifg{}.txt'.format(args.suffix))
     if os.path.exists(mode_ifg_file): os.remove(mode_ifg_file)
     with open(mode_ifg_file, 'w') as f:
         for i in ifg_corrected_by_mode:
             print('{}'.format(i), file=f)
 
-    nearest_ifg_file = os.path.join(infodir, '132corrected_by_nearest_integer_ifg.txt')
+    nearest_ifg_file = os.path.join(infodir, '132corrected_by_nearest_integer_ifg{}.txt'.format(args.suffix))
     if os.path.exists(nearest_ifg_file): os.remove(nearest_ifg_file)
     with open(nearest_ifg_file, 'w') as f:
         for i in ifg_corrected_by_integer:
             print('{}'.format(i), file=f)
 
-    good_ifg_file = os.path.join(infodir, '132good_ifg_uncorrected.txt')
+    good_ifg_file = os.path.join(infodir, '132good_ifg_uncorrected{}.txt'.format(args.suffix))
     if os.path.exists(good_ifg_file): os.remove(good_ifg_file)
     with open(good_ifg_file, 'w') as f:
         for i in good_ifg:
@@ -286,18 +304,18 @@ if __name__ == "__main__":
 
     #%% Plot network
     ## Read bperp data or dummy
-    bperp_file = os.path.join(unwdir, 'baselines')
+    bperp_file = os.path.join(ccdir, 'baselines')
     if os.path.exists(bperp_file):
         bperp = io_lib.read_bperp_file(bperp_file, imdates)
     else: #dummy
         bperp = np.random.random(n_im).tolist()
 
-    pngfile = os.path.join(netdir, 'network132_only_good_without_correction.png')
-    plot_lib.plot_network(retained_ifgs, bperp, corrected_ifgs, pngfile, plot_bad=False)
+    pngfile = os.path.join(netdir, 'network132_only_good_without_correction{}.png'.format(args.suffix))
+    plot_lib.plot_corrected_network(retained_ifgs, bperp, corrected_ifgs, pngfile, plot_bad=False)
 
-    pngfile = os.path.join(netdir, 'network132_with_corrected.png')
-    plot_lib.plot_network(retained_ifgs, bperp, corrected_ifgs, pngfile)
+    pngfile = os.path.join(netdir, 'network132_with_corrected{}.png'.format(args.suffix))
+    plot_lib.plot_corrected_network(retained_ifgs, bperp, corrected_ifgs, pngfile)
 
-    pngfile = os.path.join(netdir, 'network132_all.png')
-    plot_lib.plot_network(retained_ifgs, bperp, [], pngfile)
+    pngfile = os.path.join(netdir, 'network132_all{}.png'.format(args.suffix))
+    plot_lib.plot_corrected_network(retained_ifgs, bperp, [], pngfile)
 

@@ -116,6 +116,7 @@ if __name__ == "__main__":
     iter = 1
     iter_unwdir = ccdir+"{}".format(int(iter))
     iter_unw_path = os.path.abspath(os.path.join(args.frame_dir, iter_unwdir))  # to read .unw
+    if os.path.exists(iter_unw_path): shutil.rmtree(iter_unw_path)
     Path(iter_unw_path).mkdir(parents=True, exist_ok=True)
 
     # Link unw

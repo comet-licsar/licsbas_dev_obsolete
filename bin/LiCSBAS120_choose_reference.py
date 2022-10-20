@@ -126,14 +126,14 @@ if __name__ == "__main__":
     block_rms_hgt[block_rms_hgt > np.nanpercentile(block_rms_hgt, 90)] = np.nanpercentile(block_rms_hgt, 90)
 
     ### normalise with nan minmax
-    block_unw = (block_unw - np.nanmin(block_unw)) / (np.manmax(block_unw) - np.nanmin(block_unw))
-    block_coh = (block_coh - np.nanmin(block_coh)) / (np.manmax(block_coh) - np.nanmin(block_coh))
-    block_con = (block_con - np.nanmin(block_con)) / (np.manmax(block_con) - np.nanmin(block_con))
-    block_rms_hgt = (block_rms_hgt - np.nanmin(block_rms_hgt)) / (np.manmax(block_rms_hgt) - np.nanmin(block_rms_hgt))
+    block_unw = (block_unw - np.nanmin(block_unw)) / (np.nanmax(block_unw) - np.nanmin(block_unw))
+    block_coh = (block_coh - np.nanmin(block_coh)) / (np.nanmax(block_coh) - np.nanmin(block_coh))
+    block_con = (block_con - np.nanmin(block_con)) / (np.nanmax(block_con) - np.nanmin(block_con))
+    block_rms_hgt = (block_rms_hgt - np.nanmin(block_rms_hgt)) / (np.nanmax(block_rms_hgt) - np.nanmin(block_rms_hgt))
 
     ### calculate proxy from 4 indices and normalise
     block_proxy = args.w_unw * block_unw + args.w_coh * block_coh + args.w_con * block_con - args.w_hgt * block_rms_hgt
-    block_proxy = (block_proxy - np.nanmin(block_proxy)) / (np.manmax(block_proxy) - np.nanmin(block_proxy))
+    block_proxy = (block_proxy - np.nanmin(block_proxy)) / (np.nanmax(block_proxy) - np.nanmin(block_proxy))
 
     ### load example unw for plotting in block resolution
     unwfile = os.path.join(ifgdir, ifgd, ifgd + '.unw')

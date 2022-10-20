@@ -165,8 +165,8 @@ if __name__ == "__main__":
     distance_to_center = np.sqrt((refys - desired_ref_center_y) ** 2 + (refxs - desired_ref_center_x) ** 2)
     nearest_to_center = np.min(distance_to_center)
     index_nearest_to_center = np.where(distance_to_center == nearest_to_center)
-    refy = refys[index_nearest_to_center]
-    refx = refxs[index_nearest_to_center]
+    refy = refys[index_nearest_to_center][0]
+    refx = refxs[index_nearest_to_center][0]
 
     # print(index_nearest_to_center, refy, refx)
     # proxy_max = np.nanmax(block_proxy)

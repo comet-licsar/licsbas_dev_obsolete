@@ -220,6 +220,7 @@ def main(argv=None):
 
     # define output directories and files
     resultsdir = os.path.join(tsadir, '130results'+args.suffix)  # to save vel, vintercept, rms etc
+    if not os.path.exists(resultsdir): os.mkdir(resultsdir)
     resdir = os.path.join(tsadir, '130resid'+args.suffix)  # to save .res
     if not os.path.exists(resdir): os.mkdir(resdir)
     incdir = os.path.join(tsadir,'130increment'+args.suffix)

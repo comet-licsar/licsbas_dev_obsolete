@@ -158,7 +158,6 @@ def get_para():
             ref_y = int(line.split("/")[1].split(":")[0])
 
 
-
 def correction_decision():
     global bad_ifg_not_corrected, ifg_corrected_by_mode, ifg_corrected_by_integer, good_ifg
 

@@ -1,7 +1,5 @@
 #!/usr/bin/env python3
 """
-v1.0 20220928 Qi Ou, Leeds Uni
-
 ========
 Overview
 ========
@@ -396,8 +394,8 @@ def plot_networks():
 
 
 def main():
-    init_args()
     start()
+    init_args()
     set_input_output()
     get_para()
     correction_decision()

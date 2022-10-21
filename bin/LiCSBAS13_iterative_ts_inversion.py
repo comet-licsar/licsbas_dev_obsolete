@@ -1,7 +1,5 @@
 #!/usr/bin/env python3
 """
-v1.0 202201019 Qi Ou, University of Leeds
-
 ========
 Overview
 ========
@@ -217,8 +215,8 @@ def run_133(current_iter):
 
 
 def main():
-    init_args()
     start()
+    init_args()
     set_input_output()
     get_ifgdates()
     iterative_correction()

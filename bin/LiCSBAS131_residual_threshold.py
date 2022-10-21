@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """
-v1.0 20220928 Qi Ou, Leeds Uni
-
+========
+Overview
+========
 This script
 (1) calculates a histogram of each residual map converted into factors of 2pi radian,
 (2) offsets the residual map by the histogram peak to remove any bias from referencing effect
@@ -150,8 +151,8 @@ def plot_histogram_of_rms_of_depeaked_residuals():
 
 
 def main():
-    init_args()
     start()
+    init_args()
     set_input_output()
     get_para()
     plot_histogram_of_rms_of_depeaked_residuals()

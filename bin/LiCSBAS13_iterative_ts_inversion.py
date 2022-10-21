@@ -74,6 +74,7 @@ def init_args():
     parser.add_argument('-t', '--ts_dir', default="TS_GEOCml10GACOS", help="folder containing time series")
     parser.add_argument('-p', '--percentile', default="80", type=float, help="percentile RMS for thresholding")
     parser.add_argument('--thresh', default="0.2", type=float, help="percentile RMS for thresholding")
+    parser.add_argument('--starting_iteration', default=1, type=int, help="starting iteration for resuming crashed iteration (if crashed in iter 3, should restart in iter 2. The code will first check the correction threshold of iter 2 before deciding if it should go into iter 3)")
     args = parser.parse_args()
 
 
@@ -125,14 +126,7 @@ def get_ifgdates():
     ifgdates.sort()
 
 
-def iterative_correction():
-    # define first iteration output dir
-    iter = 1
-    iter_unwdir = ccdir+"{}".format(int(iter))
-    iter_unw_path = os.path.abspath(os.path.join(args.frame_dir, iter_unwdir))  # to read .unw
-    if os.path.exists(iter_unw_path): shutil.rmtree(iter_unw_path)
-    Path(iter_unw_path).mkdir(parents=True, exist_ok=True)
-
+def first_iteration(iter_unwdir, iter_unw_path):
     # Link unw
     for pair in ifgdates:
         pair_dir = os.path.join(iter_unw_path, pair)
@@ -141,9 +135,22 @@ def iterative_correction():
         linkfile = os.path.join(pair_dir, pair + '.unw')
         os.link(unwfile, linkfile)
 
-    # run 0th iteration
+    # run 1st iteration
     run_130(iter_unwdir, iter)
     run_131(iter)
+
+
+def iterative_correction():
+    # define first iteration output dir
+    iter = args.starting_iteration # default 1
+    iter_unwdir = ccdir+"{}".format(int(iter))
+    iter_unw_path = os.path.abspath(os.path.join(args.frame_dir, iter_unwdir))  # to read .unw
+    if os.path.exists(iter_unw_path): shutil.rmtree(iter_unw_path)
+    Path(iter_unw_path).mkdir(parents=True, exist_ok=True)
+
+    if iter == 1:
+        first_iteration(iter_unwdir, iter_unw_path)
+
     resid_threshold_file = os.path.join(infodir, '131resid_2pi{}.txt'.format(int(iter)))
     current_thresh = float(io_lib.get_param_par(resid_threshold_file, 'RMS_thresh'))
     print("current threshold is {}".format(current_thresh))

@@ -731,26 +731,6 @@ def main(argv=None):
         cumh5.create_dataset('cum', data=cum, compression=compress)
         cumh5.create_dataset('vel', data=vel, compression=compress)
         cumh5.create_dataset('vintercept', data=vconst, compression=compress)
-
-    indices = ['coh_avg', 'hgt', 'n_loop_err', 'n_unw', 'slc.mli',
-               'maxTlen', 'n_gap', 'n_ifg_noloop', 'resid_rms']
-    for index in indices:
-        file = os.path.join(resultsdir, index)
-        if os.path.exists(file):
-            data = io_lib.read_img(file, length, width)
-            cumh5.create_dataset(index, data=data, compression=compress)
-        else:
-            print('  {} not exist in results dir. Skip'.format(index))
-
-    LOSvecs = ['E.geo', 'N.geo', 'U.geo']
-    for LOSvec in LOSvecs:
-        file = os.path.join(ccdir, LOSvec)
-        if os.path.exists(file):
-            data = io_lib.read_img(file, length, width)
-            cumh5.create_dataset(LOSvec, data=data, compression=compress)
-        else:
-            print('  {} not exist in GEOCml dir. Skip'.format(LOSvec))
-
     cumh5.close()
 
 
@@ -807,7 +787,6 @@ def main(argv=None):
     print('Output directory: {}\n'.format(os.path.relpath(tsadir)))
 
 
-#%%
 def count_gaps_wrapper(i):
     print("    Running {:2}/{:2}th patch...".format(i+1, n_para_gap), flush=True)
     n_pt_patch = int(np.ceil(unwpatch.shape[0]/n_para_gap))
@@ -819,7 +798,6 @@ def count_gaps_wrapper(i):
         return
 
     ### n_gap and gap location
-#    ns_unw_unnan4inc = (np.matmul(np.int8(G[:, :, None]), (~np.isnan(unwpatch.T))[:, None, :])).sum(axis=0, dtype=np.int16) #n_ifg, n_im-1, n_pt -> n_im-1, n_pt
     ns_unw_unnan4inc = np.array([(G[:, j]*
                           (~np.isnan(unwpatch[i*n_pt_patch:(i+1)*n_pt_patch])))
                          .sum(axis=1, dtype=np.int16) for j in range(n_im-1)])
@@ -857,7 +835,6 @@ def count_gaps_wrapper(i):
     return _ns_gap_patch, _gap_patch, _ns_ifg_noloop_patch
 
 
-#%%
 def inc_png_wrapper(imx):
     imd = imdates[imx]
     if imd == imdates[-1]:
@@ -887,7 +864,7 @@ def inc_png_wrapper(imx):
     if not keep_incfile:
         os.remove(incfile)
 
-# #%%
+
 def resid_png_wrapper(i):
     ifgd = ifgdates[i]
     infile = os.path.join(resdir, '{}.res'.format(ifgd))
@@ -904,6 +881,5 @@ def resid_png_wrapper(i):
         os.remove(infile)
 
 
-#%% main
 if __name__ == "__main__":
     sys.exit(main())

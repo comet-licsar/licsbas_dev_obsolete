@@ -33,6 +33,8 @@ import matplotlib.pyplot as plt
 import os
 import glob
 import argparse
+import sys
+import time
 import LiCSBAS_io_lib as io_lib
 
 
@@ -46,10 +48,15 @@ if __name__ == "__main__":
     parser.add_argument('--suffix', default="", type=str, help="suffix of both input and output")
     args = parser.parse_args()
 
+    start = time.time()
+    ver="1.0"; date=20221020; author="Qi Ou"
+    print("\n{} ver{} {} {}".format(os.path.basename(sys.argv[0]), ver, date, author), flush=True)
+    print("{} {}".format(os.path.basename(sys.argv[0]), ' '.join(sys.argv[1:])), flush=True)
+
     # define input directories
     unwdir = os.path.abspath(os.path.join(args.frame_dir, args.unw_dir))
     tsadir = os.path.abspath(os.path.join(args.frame_dir, args.ts_dir))
-    resdir = os.path.join(tsadir, '13resid'+args.suffix)
+    resdir = os.path.join(tsadir, '130resid'+args.suffix)
 
     # define output directories
     infodir = os.path.join(tsadir, 'info')
@@ -62,22 +69,6 @@ if __name__ == "__main__":
     speed_of_light = 299792458  # m/s
     wavelength = speed_of_light/radar_frequency
     coef_r2m = -wavelength/4/np.pi*1000
-
-
-    # resultsdir = os.path.join(tsadir, 'results'+args.out_suffix)
-    # if os.path.exists(resultsdir): os.remove(resultsdir)
-
-    # netdir = os.path.join(tsadir, 'network')
-
-    # with open(os.path.join(infodir, '13parameters.txt'), 'r') as f:
-    #     for line in f.readlines():
-    #         if 'range_samples' in line:
-    #             range_samples = int(line.split()[1])
-    #         if 'azimuth_lines' in line:
-    #             azimuth_lines = int(line.split()[1])
-
-    # #%% Start finding low residual ref point
-    # sumsq_de_peaked_res = np.zeros((length, width), dtype=np.float32)
 
     print('Reading residual maps from {}'.format(resdir))
     restxtfile = os.path.join(infodir, '131resid_2pi{}.txt'.format(args.suffix))
@@ -113,6 +104,20 @@ if __name__ == "__main__":
         print('RMS_thresh: {:5.2f}'.format(threshold), file=f)
 
         print('IFG RMS res, peak = {:2f}, {}% = {:2f}'.format(peak_ifg_res_rms, int(args.percentile), threshold))
+
+    # %% Finish
+    print('\nCheck network/*, 11bad_ifg_ras/* and 11ifg_ras/* in TS dir.')
+    print(
+        'If you want to change the bad ifgs to be discarded, re-run with different thresholds or make a ifg list and indicate it by --rm_ifg_list option in the next step.')
+
+    elapsed_time = time.time() - start
+    hour = int(elapsed_time / 3600)
+    minite = int(np.mod((elapsed_time / 60), 60))
+    sec = int(np.mod(elapsed_time, 60))
+    print("\nElapsed time: {0:02}h {1:02}m {2:02}s".format(hour, minite, sec))
+
+    print('\n{} Successfully finished!!\n'.format(os.path.basename(argv[0])))
+    print('Output directory: {}\n'.format(os.path.relpath(tsadir)))
 
         # # calculate rms de-peaked residuals
         # for i in range(len(res_rms_list)):

@@ -149,7 +149,7 @@ def iterative_correction():
     print("current threshold is {}".format(current_thresh))
 
     # iterative correction
-    while current_thresh < args.thresh:
+    while current_thresh > args.thresh:
         print("Iteration {}".format(int(iter)))
         print("Correction threshold = {:2f}, above target {:2f}, keep correcting...".format(current_thresh, args.thresh))
         next_iter = iter + 1

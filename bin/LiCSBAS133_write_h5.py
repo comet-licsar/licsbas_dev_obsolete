@@ -21,7 +21,8 @@ import LiCSBAS_plot_lib as plot_lib
 
 
 def init_args():
-    parser = argparse.ArgumentParser(description="Detect coregistration error")
+    parser = argparse.ArgumentParser(description="Assemble all results into cum.h5"
+                                                 "Check")
     parser.add_argument('-f', "--frame_dir", default="./", help="directory of LiCSBAS output of a particular frame")
     parser.add_argument('-c', '--comp_cc_dir', default="GEOCml10GACOS", help="folder containing connected components and cc files")
     parser.add_argument('-g', '--geoc_dir', default="GEOC", help="folder containing geo.E/N/U.tif")
@@ -75,6 +76,7 @@ def read_length_width():
 
 
 def calc_n_unw():
+    print("Computing number of unw per pixel...")
     n_unw = np.zeros((length, width), dtype=np.float32)
     for ifgd in ifgdates:
         unwfile = os.path.join(ifgdir, ifgd, ifgd+'.unw')
@@ -97,7 +99,9 @@ def calc_n_unw():
 
     return n_unw
 
+
 def calc_coh_avg():
+    print("Computing average coherence...")
     # calc n_unw and avg_coh of final data set
     coh_avg = np.zeros((length, width), dtype=np.float32)
     n_coh = np.zeros((length, width), dtype=np.int16)
@@ -128,7 +132,7 @@ def calc_coh_avg():
 
 def calc_n_loop_error(n_unw):
     ''' same as loop_closure_4th in LiCSBAS12_loop_closure.py '''
-    print('Compute n_loop_error and n_ifg_noloop...', flush=True)
+    print('Compute n_loop_error...', flush=True)
 
     # read reference
     reffile = os.path.join(infodir, '120ref.txt')
@@ -173,7 +177,7 @@ def calc_n_loop_error(n_unw):
         n_loop_err = n_loop_err + ~is_ok  # suspected unw error
 
     # write to file
-    n_loop_err[n_unw == 0] = np.nan
+    n_loop_err[np.isnan(n_unw)] = np.nan
     # n_loop_err = np.array(n_loop_err)
     n_loop_err_file = os.path.join(resultsdir, 'n_loop_err')
     n_loop_err.tofile(n_loop_err_file)

@@ -21,15 +21,9 @@ import LiCSBAS_plot_lib as plot_lib
 
 
 def init_args():
-    parser = argparse.ArgumentParser(description="""
-    \nAssemble all results into cum.h5
-    \nAssemble all results into cum.h5
-    \nAssemble all results into cum.h5
-    \nAssemble all results into cum.h5
-    """)
-    parser.add_argument('-f', "--frame_dir", default="./", help="directory of LiCSBAS output of a particular frame")
-    parser.add_argument('-c', '--comp_cc_dir', default="GEOCml10GACOS", help="folder containing connected components and cc files")
-    parser.add_argument('-g', '--geoc_dir', default="GEOC", help="folder containing geo.E/N/U.tif")
+    parser = argparse.ArgumentParser(description="Assemble all results into cum.h5")
+    parser.add_argument('-f', "--frame_dir", default="./", help="directory of LiCSBAS output")
+    parser.add_argument('-c', '--comp_cc_dir', default="GEOCml10GACOS", help="folder containing connected components and coherence files")
     parser.add_argument('-t', '--ts_dir', default="TS_GEOCml10GACOS", help="folder containing time series")
     parser.add_argument('--suffix', default="", type=str, help="suffix of the last iteration")
     args = parser.parse_args()
@@ -60,7 +54,6 @@ def set_input_output(args):
     global geoc_dir, ccdir, ifgdir, tsadir, infodir, last_result_dir, resultsdir, last_cumh5file, cumh5file
 
     # define input directories
-    geoc_dir = os.path.abspath(os.path.join(args.frame_dir, args.geoc_dir))
     ccdir = os.path.abspath(os.path.join(args.frame_dir, args.comp_cc_dir))
     ifgdir = os.path.abspath(os.path.join(args.frame_dir, args.comp_cc_dir+args.suffix))
     tsadir = os.path.abspath(os.path.join(args.frame_dir, args.ts_dir))
@@ -210,7 +203,7 @@ def write_h5(cumh5file):
 
     LOSvecs = ['E.geo', 'N.geo', 'U.geo']
     for LOSvec in LOSvecs:
-        file = os.path.join(geoc_dir, LOSvec)
+        file = os.path.join(ccdir, LOSvec)
         if os.path.exists(file):
             data = io_lib.read_img(file, length, width)
             cumh5.create_dataset(LOSvec, data=data, compression=compress)

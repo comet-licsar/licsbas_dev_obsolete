@@ -6,6 +6,7 @@ v1.3.3 20210402 Yu Morishita, GSI
 Overview
 ========
 This script checks quality of unw data and identifies bad interferograms based on average coherence and coverage of the unw data. This also prepares a time series working directory (overwrite if already exists).
+This script also identifies coregistration error, which looks like a ramp in azimuth, based on the absolute slope and R-squares obtained from a linear fit to the pixels in the middle column o the ifg
 
 ===============
 Input & output files

@@ -2,12 +2,20 @@
 """
 v1.0 20220928 Qi Ou, Leeds Uni
 
-plot unw with non-cyclic linear colour bar,
-plot connected components output by SNAPHU,
-plot residual in radian divided by 2pi and rounded to the nearest integer,
-plot a histogram of residual in radian divided by 2pi
-correct each component by the mode of nearest integer in that component
-run from inside the 13resid folder of LiCSBAS output with "../info/slc.mli.par" pointing to a text file containing range samples and azimuth lines
+========
+Overview
+========
+This script:
+ - plots connected components output by SNAPHU,
+ - plots residual in radian divided by 2pi and rounded to the nearest integer,
+ - decides whether / how to correct each ifg
+         - if RMS residual already below threshold:
+            - keep good ifg
+         - if nearest integer doesn't not reduce RMS residual to below threshold:
+            - discard bad ifg
+         - else (correct unwrapping mistake by integer multiples of 2pi):
+            - correct each component by the mode of nearest integer in that component (preferred)
+            - correct by nearest integer (if component mode doesn't reduce RMS residual to below threshold)
 
 ===============
 Input & output files
@@ -16,6 +24,7 @@ Input & output files
 Inputs in GEOCml*/ (--comp_cc_dir):
  - baselines
  - slc.mli.par
+
  - yyyymmdd_yyyymmdd/
    - yyyymmdd_yyyymmdd.conncomp
    - yyyymmdd_yyyymmdd.cc
@@ -27,6 +36,7 @@ Inputs in GEOCml*/ (--unw_dir):
 Inputs in TS_GEOCml*/ :
  - 13resid*/ (--resid_dir)
    - yyyymmdd_yyyymmdd.res
+
  - info/
    - 131resid_2pi*.txt     : RMS residuals per IFG computed in radian and as a factor of 2pi
 
@@ -36,10 +46,13 @@ Outputs in TS_GEOCml*/ :
    - bad_ifg_no_correction/*png  : residuals and nearest integers showing why ifgs can't be corrected
    - integer_correction/*png     : ifgs corrected by nearest residual integer (when mode doesn't work)
    - mode_correction/*png        : ifgs corrected by component mode (preferred)
+
  - info/
    - 132*.txt          : Lists of ifgs corrected by each category (good, bad, integer_corrected, mode_corrected)
+
  - network/
    - network132*.png   : Figures of the network with/without corrected ifgs, with bad ifgs removed
+
  """
 
 from scipy import stats
@@ -62,38 +75,47 @@ import LiCSBAS_plot_lib as plot_lib
 import shutil
 
 
+class CustomFormatter(argparse.ArgumentDefaultsHelpFormatter, argparse.RawDescriptionHelpFormatter):
+    '''
+    Use a multiple inheritance approach to use features of both classes.
+    The ArgumentDefaultsHelpFormatter class adds argument default values to the usage help message
+    The RawDescriptionHelpFormatter class keeps the indentation and line breaks in the ___doc___
+    '''
+    pass
+
+
 def init_args():
     global args
 
-    parser = argparse.ArgumentParser(description="Detect coregistration error")
-    parser.add_argument('-f', "--frame_dir", default="./", help="directory of LiCSBAS output of a particular frame")
-    parser.add_argument('-c', '--comp_cc_dir', default="GEOCml10GACOS", help="folder containing connected components and cc files")
-    parser.add_argument('-g', '--unw_dir', default="GEOCml10GACOS", help="folder containing unw input to be corrected")
-    parser.add_argument('-r', '--correct_dir', default="GEOCml10GACOS_corrected", help="folder containing corrected unw input")
-    parser.add_argument('-t', '--ts_dir', default="TS_GEOCml10GACOS", help="folder containing time series")
+    parser = argparse.ArgumentParser(description=__doc__, formatter_class=CustomFormatter)
+    parser.add_argument('-f', dest='frame_dir', default="./", help="directory of LiCSBAS output of a particular frame")
+    parser.add_argument('-c', dest='comp_cc_dir', default="GEOCml10GACOS", help="folder containing connected components and cc files")
+    parser.add_argument('-g', dest='unw_dir', default="GEOCml10GACOS", help="folder containing unw input to be corrected")
+    parser.add_argument('-r', dest='correct_dir', default="GEOCml10GACOS_corrected", help="folder for corrected unw")
+    parser.add_argument('-t', dest='ts_dir', default="TS_GEOCml10GACOS", help="folder containing time series and residuals")
     parser.add_argument('--thresh', default=0.5, help="threshold RMS residual per ifg as a fraction of 2 pi radian, used if info/131resid_2pi.txt doesn't exist")
     parser.add_argument('--suffix', default="", type=str, help="suffix of the input 131resid_2pi*.txt and outputs")
     args = parser.parse_args()
 
 
 def start():
+    global start_time
     # intialise and print info on screen
-    start = time.time()
+    start_time = time.time()
     ver="1.0"; date=20221020; author="Qi Ou"
     print("\n{} ver{} {} {}".format(os.path.basename(sys.argv[0]), ver, date, author), flush=True)
     print("{} {}".format(os.path.basename(sys.argv[0]), ' '.join(sys.argv[1:])), flush=True)
-    return start
 
 
-def finish(start_time):
-    # %% Finish
+def finish():
+    #%% Finish
     elapsed_time = time.time() - start_time
-    hour = int(elapsed_time / 3600)
-    minite = int(np.mod((elapsed_time / 60), 60))
-    sec = int(np.mod(elapsed_time, 60))
-    print("\nElapsed time: {0:02}h {1:02}m {2:02}s".format(hour, minite, sec))
-    print('\n{} {} Successfully finished!!\n'.format(os.path.basename(sys.argv[0]), ' '.join(sys.argv[1:])))
-    print('Output directory: {}\n'.format(os.path.relpath(correct_dir)))
+    hour = int(elapsed_time/3600)
+    minite = int(np.mod((elapsed_time/60),60))
+    sec = int(np.mod(elapsed_time,60))
+    print("\nElapsed time: {0:02}h {1:02}m {2:02}s".format(hour,minite,sec))
+    print("\n{} {}".format(os.path.basename(sys.argv[0]), ' '.join(sys.argv[1:])), flush=True)
+    print('Output directory: {}\n'.format(os.path.relpath(tsadir)))
 
 
 def set_input_output():
@@ -128,7 +150,6 @@ def set_input_output():
     mode_png_dir = os.path.join(resdir, 'mode_correction/')
     if os.path.exists(mode_png_dir): shutil.rmtree(mode_png_dir)
     Path(mode_png_dir).mkdir(parents=True, exist_ok=True)
-
 
 
 def get_para():
@@ -192,9 +213,6 @@ def correction_decision():
             unwfile = os.path.join(unwdir, pair, pair + '.unw')
             linkfile = os.path.join(correct_pair_dir, pair + '.unw')
             os.link(unwfile, linkfile)
-            # relative_path = os.path.relpath(unwfile, correct_unw_dir+'/')
-            # os.symlink(relative_path, linkfile)
-            # shutil.copy(unwfile, correct_unw_dir)
 
             ## plot_res
             plt.imshow(res_num_2pi, vmin=-2, vmax=2, cmap=cm.RdBu, interpolation='nearest')
@@ -282,7 +300,6 @@ def correction_decision():
                 del con, unw, unw_corrected, res_num_2pi, res_integer, res_mm, res_rad, res_rms, correction_title
 
 
-
 def plot_correction(pair, unw, con, unw_corrected, res_num_2pi, res_integer, res_mode, correction_title, res_rms, png_path):
     fig, ax = plt.subplots(2, 3, figsize=(9, 5))
     fig.suptitle(pair)
@@ -368,14 +385,14 @@ def plot_networks():
 
 
 def main():
-    start_time = start()
+    start()
     init_args()
     set_input_output()
     get_para()
     correction_decision()
     save_lists()
     plot_networks()
-    finish(start_time)
+    finish()
 
 
 if __name__ == "__main__":

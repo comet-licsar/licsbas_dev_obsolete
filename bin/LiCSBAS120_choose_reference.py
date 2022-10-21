@@ -4,6 +4,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 import os
 import argparse
+import time
+import sys
 import LiCSBAS_io_lib as io_lib
 import LiCSBAS_tools_lib as tools_lib
 import LiCSBAS_plot_lib as plot_lib
@@ -15,9 +17,16 @@ def block_sum(array, k):
                              np.arange(0, array.shape[1], k), axis=1)
     return result
 
+class CustomFormatter(argparse.ArgumentDefaultsHelpFormatter, argparse.RawDescriptionHelpFormatter):
+    '''
+    Use a multiple inheritance approach to use features of both classes.
+    The ArgumentDefaultsHelpFormatter class adds argument default values to the usage help message
+    The RawDescriptionHelpFormatter class keeps the indentation and line breaks in the ___doc___
+    '''
+    pass
 
-if __name__ == "__main__":
-
+def init_args():
+    global args
     parser = argparse.ArgumentParser(description="Detect coregistration error")
     parser.add_argument('-f', "--frame_dir", default="./", help="directory of LiCSBAS output of a particular frame")
     parser.add_argument('-g', '--unw_dir', default="GEOCml10GACOS", help="folder containing unw input")
@@ -32,6 +41,31 @@ if __name__ == "__main__":
     parser.add_argument('--refy', default=0.5, choices=range(0, 1), metavar="[0-1]", type=float, help="y axis fraction of desired ref center from top (default 0.5)")
     args = parser.parse_args()
 
+
+def start():
+    global start_time
+    # intialise and print info on screen
+    start_time = time.time()
+    ver="1.0"; date=20221020; author="Qi Ou"
+    print("\n{} ver{} {} {}".format(os.path.basename(sys.argv[0]), ver, date, author), flush=True)
+    print("{} {}".format(os.path.basename(sys.argv[0]), ' '.join(sys.argv[1:])), flush=True)
+
+
+
+def finish():
+    #%% Finish
+    elapsed_time = time.time() - start_time
+    hour = int(elapsed_time/3600)
+    minite = int(np.mod((elapsed_time/60),60))
+    sec = int(np.mod(elapsed_time,60))
+    print("\nElapsed time: {0:02}h {1:02}m {2:02}s".format(hour,minite,sec))
+    print("\n{} {}".format(os.path.basename(sys.argv[0]), ' '.join(sys.argv[1:])), flush=True)
+    print('Output directory: {}\n'.format(os.path.relpath(tsadir)))
+
+
+def set_input_output():
+    global ifgdir, tsadir, infodir, resultsdir, netdir, noref_ifgfile, no_ref_dir, reference_png
+
     ### Define input directories
     ifgdir = os.path.abspath(os.path.join(args.frame_dir, args.unw_dir))
     tsadir = os.path.abspath(os.path.join(args.frame_dir, args.ts_dir))
@@ -43,6 +77,10 @@ if __name__ == "__main__":
     if not os.path.exists(no_ref_dir): os.mkdir(no_ref_dir)
     netdir = os.path.join(tsadir, 'network')
     noref_ifgfile = os.path.join(infodir, '120bad_ifg.txt')
+    reference_png = os.path.join(infodir, "120_reference.png")
+
+def read_length_width():
+    global length, width
 
     ### Get size
     mlipar = os.path.join(ifgdir, 'slc.mli.par')
@@ -50,13 +88,17 @@ if __name__ == "__main__":
     length = int(io_lib.get_param_par(mlipar, 'azimuth_lines'))
     print("\nSize         : {} x {}".format(width, length), flush=True)
 
+def decide_reference_window_size():
+    global window_size
     ### Get resolution
     dempar = os.path.join(ifgdir, 'EQA.dem_par')
     lattitude_resolution = float(io_lib.get_param_par(dempar, 'post_lat'))
     window_size = int(abs(args.win / 110 / lattitude_resolution) + 0.5)   # 110 km per degree latitude
     print("\nWindow size : ", window_size)
 
-    #%% Read date, network information and size
+def get_ifgdates():
+    global ifgdates
+
     ### Get dates
     ifgdates = tools_lib.get_ifgdates(ifgdir)
 
@@ -68,6 +110,8 @@ if __name__ == "__main__":
     ifgdates = list(set(ifgdates)-set(bad_ifg11))
     ifgdates.sort()
 
+def calc_block_sum_of_unw_coh_component_size():
+    global block_unw, block_coh, block_con
     ### Start counting indices for choosing the reference
     n_unw = np.zeros((length, width), dtype=np.float32)
     n_coh = np.zeros((length, width), dtype=np.float32)
@@ -103,6 +147,9 @@ if __name__ == "__main__":
     block_coh = block_sum(n_coh, window_size)
     block_con = block_sum(n_con, window_size)
 
+
+def calc_height_std():
+    global block_rms_hgt
     ### calculate block standard deviation of height
     hgtfile = os.path.join(resultsdir, 'hgt')
     hgt = io_lib.read_img(hgtfile, length, width)
@@ -113,6 +160,8 @@ if __name__ == "__main__":
     hgt_demean_square = hgt_demean ** 2
     block_rms_hgt = np.sqrt( block_sum(hgt_demean_square, window_size) / (window_size ** 2) )
 
+def clip_normalise_combine_indices():
+    global block_proxy
     ### turn 0 to nan
     block_unw[block_unw == 0] = np.nan
     block_coh[block_coh == 0] = np.nan
@@ -135,8 +184,22 @@ if __name__ == "__main__":
     block_proxy = args.w_unw * block_unw + args.w_coh * block_coh + args.w_con * block_con - args.w_hgt * block_rms_hgt
     block_proxy = (block_proxy - np.nanmin(block_proxy)) / (np.nanmax(block_proxy) - np.nanmin(block_proxy))
 
+def closest_to_ref_center():
+    global desired_ref_center_x, desired_ref_center_y, refx, refy
+    ## choose distance closer to center
+    desired_ref_center_y = int(block_proxy.shape[0] * args.refy)
+    desired_ref_center_x = int(block_proxy.shape[1] * args.refx)
+    refys, refxs = np.where(block_proxy > args.proxy_thresh)
+    distance_to_center = np.sqrt((refys - desired_ref_center_y) ** 2 + (refxs - desired_ref_center_x) ** 2)
+    nearest_to_center = np.min(distance_to_center)
+    index_nearest_to_center = np.where(distance_to_center == nearest_to_center)
+    refy = refys[index_nearest_to_center][0]
+    refx = refxs[index_nearest_to_center][0]
+    print("Reference nearest to center: refy={}, refx={}".format(refy, refx))
+
+def plot_ref_proxies():
     ### load example unw for plotting in block resolution
-    unwfile = os.path.join(ifgdir, ifgd, ifgd + '.unw')
+    unwfile = os.path.join(ifgdir, ifgdates[:-1], ifgdates[:-1] + '.unw')
     unw = io_lib.read_img(unwfile, length, width)
     unw_example = block_sum(unw, window_size)
     unw_example[unw_example == 0] = np.nan
@@ -158,33 +221,20 @@ if __name__ == "__main__":
     ax[0, 2].set_title("proxy")
     ax[1, 2].set_title("unw example")
 
-    ## choose distance closer to center
-    desired_ref_center_y = int(block_proxy.shape[0] * args.refy)
-    desired_ref_center_x = int(block_proxy.shape[1] * args.refx)
-    refys, refxs = np.where(block_proxy > args.proxy_thresh)
-    distance_to_center = np.sqrt((refys - desired_ref_center_y) ** 2 + (refxs - desired_ref_center_x) ** 2)
-    nearest_to_center = np.min(distance_to_center)
-    index_nearest_to_center = np.where(distance_to_center == nearest_to_center)
-    refy = refys[index_nearest_to_center][0]
-    refx = refxs[index_nearest_to_center][0]
-
-    # print(index_nearest_to_center, refy, refx)
-    # proxy_max = np.nanmax(block_proxy)
-    # refys, refxs = np.where(block_proxy == proxy_max)
-    # print(proxy_max, refys, refxs)
-    # refy = refys[0]
-    # refx = refxs[0]
     ax[0, 0].scatter(refx, refy, s=3, c='red')
     ax[0, 1].scatter(refx, refy, s=3, c='red')
     ax[0, 2].scatter(refx, refy, s=3, c='red')
-    ax[0, 2].scatter(desired_ref_center_x, desired_ref_center_y, s=3, c='grey')
+    ax[0, 2].scatter(desired_ref_center_x, desired_ref_center_y, s=3, c='black')
     ax[1, 0].scatter(refx, refy, s=3, c='red')
     ax[1, 1].scatter(refx, refy, s=3, c='red')
     ax[1, 2].scatter(refx, refy, s=3, c='red')
 
-    fig.savefig(os.path.join(infodir, "120_reference.png"), dpi=300, bbox_inches='tight')
+    fig.savefig(reference_png, dpi=300, bbox_inches='tight')
 
-    # print reference point
+def save_reference_to_file():
+    global refx1, refx2, refy1, refy2
+
+    # calc reference window in full resolution ifg
     refx1, refx2, refy1, refy2 = refx*window_size, (refx+1)*window_size, refy*window_size, (refy+1)*window_size
     print('Selected ref: {}:{}/{}:{}'.format(refx1, refx2, refy1, refy2), flush=True)
 
@@ -193,6 +243,8 @@ if __name__ == "__main__":
     with open(refsfile, 'w') as f:
         print('{}:{}/{}:{}'.format(refx1, refx2, refy1, refy2), file=f)
 
+def discard_ifg_with_all_nans_at_ref():
+    global noref_ifg
     ### identify IFGs with all nan in the reference window
     ### Check ref exist in unw. If not, list as noref_ifg
     noref_ifg = []
@@ -218,10 +270,11 @@ if __name__ == "__main__":
         for i in noref_ifg:
             print('{}'.format(i), file=f)
 
+
+def plot_networks():
     #%% Plot network
     ## Read bperp data or dummy
     imdates = tools_lib.ifgdates2imdates(ifgdates)
-    n_ifg = len(ifgdates)
     n_im = len(imdates)
     bperp_file = os.path.join(ifgdir, 'baselines')
     if os.path.exists(bperp_file):
@@ -237,3 +290,29 @@ if __name__ == "__main__":
 
     pngfile = os.path.join(netdir, 'network120_remain.png')
     plot_lib.plot_network(ifgdates, bperp, noref_ifg, pngfile, plot_bad=False)
+
+
+def main():
+    start()
+    init_args()
+    set_input_output()
+    read_length_width()
+    decide_reference_window_size()
+    get_ifgdates()
+    calc_block_sum_of_unw_coh_component_size()
+    calc_height_std()
+    clip_normalise_combine_indices()
+    closest_to_ref_center()
+    plot_ref_proxies()
+    save_reference_to_file()
+    discard_ifg_with_all_nans_at_ref()
+    plot_networks()
+    finish()
+
+
+if __name__ == "__main__":
+    main()
+
+
+
+

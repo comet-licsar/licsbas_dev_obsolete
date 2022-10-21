@@ -38,28 +38,64 @@ import time
 import LiCSBAS_io_lib as io_lib
 
 
-if __name__ == "__main__":
+class CustomFormatter(argparse.ArgumentDefaultsHelpFormatter, argparse.RawDescriptionHelpFormatter):
+    '''
+    Use a multiple inheritance approach to use features of both classes.
+    The ArgumentDefaultsHelpFormatter class adds argument default values to the usage help message
+    The RawDescriptionHelpFormatter class keeps the indentation and line breaks in the ___doc___
+    '''
+    pass
 
-    parser = argparse.ArgumentParser(description="Detect coregistration error")
-    parser.add_argument('-f', "--frame_dir", default="./", help="directory of LiCSBAS output of a particular frame")
-    parser.add_argument('-g', '--unw_dir', default="GEOCml10GACOS", help="folder containing slc.mli.par")
-    parser.add_argument('-t', '--ts_dir', default="TS_GEOCml10GACOS", help="folder containing time series")
-    parser.add_argument('-p', '--percentile', default=80, type=float, help="percentile RMS for thresholding")
+
+def init_args():
+    global args
+
+    parser = argparse.ArgumentParser(description=__doc__, formatter_class=CustomFormatter)
+    parser.add_argument('-f', dest='frame_dir', default="./", help="directory of LiCSBAS output of a particular frame")
+    parser.add_argument('-g', dest='unw_dir', default="GEOCml10GACOS", help="folder containing slc.mli.par")
+    parser.add_argument('-t', dest='ts_dir', default="TS_GEOCml10GACOS", help="folder containing time series")
+    parser.add_argument('-p', dest='percentile', default=80, type=float, help="percentile RMS for thresholding")
     parser.add_argument('--suffix', default="", type=str, help="suffix of both input and output")
     args = parser.parse_args()
 
-    start = time.time()
+
+def start():
+    global start_time
+    # intialise and print info on screen
+    start_time = time.time()
     ver="1.0"; date=20221020; author="Qi Ou"
     print("\n{} ver{} {} {}".format(os.path.basename(sys.argv[0]), ver, date, author), flush=True)
     print("{} {}".format(os.path.basename(sys.argv[0]), ' '.join(sys.argv[1:])), flush=True)
+
+
+def finish():
+    #%% Finish
+    elapsed_time = time.time() - start_time
+    hour = int(elapsed_time/3600)
+    minite = int(np.mod((elapsed_time/60),60))
+    sec = int(np.mod(elapsed_time,60))
+    print("\nElapsed time: {0:02}h {1:02}m {2:02}s".format(hour,minite,sec))
+    print("\n{} {}".format(os.path.basename(sys.argv[0]), ' '.join(sys.argv[1:])), flush=True)
+    print('Output directory: {}\n'.format(os.path.relpath(tsadir)))
+
+
+def set_input_output():
+    global unwdir, tsadir, resdir, infodir, hist_png, restxtfile
 
     # define input directories
     unwdir = os.path.abspath(os.path.join(args.frame_dir, args.unw_dir))
     tsadir = os.path.abspath(os.path.join(args.frame_dir, args.ts_dir))
     resdir = os.path.join(tsadir, '130resid'+args.suffix)
 
-    # define output directories
+    # define output directory and files
     infodir = os.path.join(tsadir, 'info')
+    hist_png = os.path.join(infodir, "131RMS_ifg_res_hist{}.png".format(args.suffix))
+    restxtfile = os.path.join(infodir, '131resid_2pi{}.txt'.format(args.suffix))
+    if os.path.exists(restxtfile): os.remove(restxtfile)
+
+
+def get_para():
+    global width, length, coef_r2m
 
     # read ifg size and satellite frequency
     mlipar = os.path.join(unwdir, 'slc.mli.par')
@@ -70,13 +106,14 @@ if __name__ == "__main__":
     wavelength = speed_of_light/radar_frequency
     coef_r2m = -wavelength/4/np.pi*1000
 
+
+def plot_histogram_of_rms_of_depeaked_residuals():
     print('Reading residual maps from {}'.format(resdir))
-    restxtfile = os.path.join(infodir, '131resid_2pi{}.txt'.format(args.suffix))
-    if os.path.exists(restxtfile): os.remove(restxtfile)
     with open(restxtfile, "w") as f:
         print('# RMS of residual (in number of 2pi)', file=f)
-        res_rms_list = []
 
+        # calc rms of de-peaked residuals
+        res_rms_list = []
         for i in glob.glob(os.path.join(resdir, '*.res')):
             pair = os.path.basename(i).split('.')[0][-17:]
             print(pair)
@@ -84,80 +121,37 @@ if __name__ == "__main__":
             res_rad = res_mm / coef_r2m
             res_num_2pi = res_rad / 2 / np.pi
             counts, bins = np.histogram(res_num_2pi, np.arange(-2.5, 2.6, 0.1))
-            peak = bins[counts.argmax()]+0.05
+            peak = bins[counts.argmax()] + 0.05
             res_num_2pi = res_num_2pi - peak
-            res_rms = np.sqrt(np.nanmean(res_num_2pi**2))
+            res_rms = np.sqrt(np.nanmean(res_num_2pi ** 2))
             res_rms_list.append(res_rms)
 
             print('{} {:5.2f}'.format(pair, res_rms), file=f)
 
+        # plotting histogram and peak and threshold vertical lines
         count_ifg_res_rms, bin_edges, patches = plt.hist(res_rms_list, np.arange(0, 3, 0.1))
-        peak_ifg_res_rms = bin_edges[count_ifg_res_rms.argmax()]+0.05
+        peak_ifg_res_rms = bin_edges[count_ifg_res_rms.argmax()] + 0.05
         threshold = np.nanpercentile(res_rms_list, args.percentile)
         plt.axvline(x=peak_ifg_res_rms, color='r', linestyle='--')
         plt.axvline(x=threshold, color='r')
         plt.title("Residual, peak = {:2f}, {}% = {:2f}".format(peak_ifg_res_rms, int(args.percentile), threshold))
-        plt.savefig(infodir+"/131RMS_ifg_res_hist{}.png".format(args.suffix), dpi=300)
-        
+        plt.savefig(hist_png, dpi=300)
+
         print('RMS_peak: {:5.2f}'.format(peak_ifg_res_rms), file=f)
         print('RMS_percentile: {}'.format(int(args.percentile), ), file=f)
         print('RMS_thresh: {:5.2f}'.format(threshold), file=f)
 
         print('IFG RMS res, peak = {:2f}, {}% = {:2f}'.format(peak_ifg_res_rms, int(args.percentile), threshold))
 
-    # %% Finish
-    print('\nCheck network/*, 11bad_ifg_ras/* and 11ifg_ras/* in TS dir.')
-    print(
-        'If you want to change the bad ifgs to be discarded, re-run with different thresholds or make a ifg list and indicate it by --rm_ifg_list option in the next step.')
 
-    elapsed_time = time.time() - start
-    hour = int(elapsed_time / 3600)
-    minite = int(np.mod((elapsed_time / 60), 60))
-    sec = int(np.mod(elapsed_time, 60))
-    print("\nElapsed time: {0:02}h {1:02}m {2:02}s".format(hour, minite, sec))
+def main():
+    start()
+    init_args()
+    set_input_output()
+    get_para()
+    plot_histogram_of_rms_of_depeaked_residuals()
+    finish()
 
-    print('\n{} Successfully finished!!\n'.format(os.path.basename(sys.argv[0])))
-    print('Output directory: {}\n'.format(os.path.relpath(tsadir)))
 
-        # # calculate rms de-peaked residuals
-        # for i in range(len(res_rms_list)):
-        #     sumsq_de_peaked_res += abs(res_num_2pi.reshape((length, width)))
-        #     # print(res_num_2pi.reshape((azimuth_lines, range_samples))[500:505, 249:253])
-        #     # print(sumsq_de_peaked_res[500:505, 249:253])
-    # fig, ax = plt.subplots(1, 3)
-    # calculate rms de-peaked residuals
-    # rms_de_peaked_res = np.sqrt(sumsq_de_peaked_res/len(res_rms_list))
-    # vmin = np.nanpercentile(rms_de_peaked_res, 1)
-    # vmax = np.nanpercentile(rms_de_peaked_res, 95)
-    # im = ax[0].imshow(rms_de_peaked_res, vmin=vmin, vmax=vmax)
-    # ax[0].set_title("RMS_de-peaked_Res")
-    # ### Mask residual by minimum n_gap
-    # n_gap = io_lib.read_img(os.path.join(resultsdir, 'n_gap'), length, width)
-    # min_n_gap = np.nanmin(n_gap)
-    # mask_n_gap = np.float32(n_gap==min_n_gap)
-    # mask_n_gap[mask_n_gap == 0] = np.nan
-    # rms_de_peaked_res = rms_de_peaked_res*mask_n_gap
-    # mask=ax[1].imshow(mask_n_gap)
-    # ax[1].set_title("n_gap")
-    # ax[2].imshow(rms_de_peaked_res, vmin=vmin, vmax=vmax)
-    # ax[2].set_title("Masked RMS")
-    # plt.colorbar(im, ax=ax, orientation='horizontal')
-    # plt.colorbar(mask, ax=ax[1], orientation='horizontal')
-    # print(min_n_gap)
-
-    # ### Find stable reference
-    # min_rms = np.nanmin(rms_de_peaked_res)
-    # refy1s, refx1s = np.where(rms_de_peaked_res == min_rms)
-    # print(refy1s, refx1s, min_rms)
-    # # print(rms_de_peaked_res[refy1s[0]-5:refy1s[0]+5, refx1s[0]-5:refx1s[0]+5])
-    # ax[2].scatter(refx1s, refy1s)
-    # ax[2].scatter(refx1s[0], refy1s[0])
-    # fig.savefig(infodir+"/131RMS_ifg_res_ref.png", dpi=300)
-    # refy1s, refx1s = refy1s[0], refx1s[0]  ## Only first index
-    # refy2s, refx2s = refy1s+1, refx1s+1
-    # print('Selected ref: {}:{}/{}:{}'.format(refx1s, refx2s, refy1s, refy2s), flush=True)
-    #
-    # ### Save ref
-    # refsfile = os.path.join(infodir, '131ref_de-peaked.txt')
-    # with open(refsfile, 'w') as f:
-    #     print('{}:{}/{}:{}'.format(refx1s, refx2s, refy1s, refy2s), file=f)
+if __name__ == "__main__":
+    main()

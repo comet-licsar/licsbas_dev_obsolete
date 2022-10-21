@@ -66,35 +66,44 @@ import LiCSBAS_io_lib as io_lib
 import LiCSBAS_tools_lib as tools_lib
 
 
+class CustomFormatter(argparse.ArgumentDefaultsHelpFormatter, argparse.RawDescriptionHelpFormatter):
+    '''
+    Use a multiple inheritance approach to use features of both classes.
+    The ArgumentDefaultsHelpFormatter class adds argument default values to the usage help message
+    The RawDescriptionHelpFormatter class keeps the indentation and line breaks in the ___doc___
+    '''
+    pass
+
+
 def init_args():
     global args
-    parser = argparse.ArgumentParser(description="Detect coregistration error")
-    parser.add_argument('-f', "--frame_dir", default="./", help="directory of LiCSBAS output of a particular frame")
-    parser.add_argument('-g', '--unw_dir', default="GEOCml10GACOS", help="folder containing unw input")
-    parser.add_argument('-t', '--ts_dir', default="TS_GEOCml10GACOS", help="folder containing time series")
-    parser.add_argument('-p', '--percentile', default="80", type=float, help="percentile RMS for thresholding")
-    parser.add_argument('--thresh', default="0.2", type=float, help="percentile RMS for thresholding")
-    parser.add_argument('--starting_iteration', default=1, type=int, help="starting iteration for resuming crashed iteration (if crashed in iter 3, should restart in iter 2. The code will first check the correction threshold of iter 2 before deciding if it should go into iter 3)")
+    parser = argparse.ArgumentParser(description=__doc__, formatter_class=CustomFormatter)
+    parser.add_argument('-f', dest="frame_dir", default="./", help="directory of LiCSBAS output of a particular frame")
+    parser.add_argument('-g', dest='unw_dir', default="GEOCml10GACOS", help="folder containing unw input")
+    parser.add_argument('-t', dest='ts_dir', default="TS_GEOCml10GACOS", help="folder containing time series")
+    parser.add_argument('-p', dest='percentile', default=80, type=float, help="percentile RMS for thresholding")
+    parser.add_argument('--thresh', default=0.2, type=float, help="target RMS used to stop iteration")
+    parser.add_argument('--starting_iteration', metavar='N', default=1, type=int, help="starting iteration for resuming crashed iteration (if crashed in iter 3, should restart in iter 2. The code will first check the correction threshold of iter 2 before deciding if it should go into iter 3)")
     args = parser.parse_args()
 
 
 def start():
+    global start_time
     # intialise and print info on screen
-    start = time.time()
+    start_time = time.time()
     ver="1.0"; date=20221020; author="Qi Ou"
     print("\n{} ver{} {} {}".format(os.path.basename(sys.argv[0]), ver, date, author), flush=True)
     print("{} {}".format(os.path.basename(sys.argv[0]), ' '.join(sys.argv[1:])), flush=True)
-    return start
 
 
-def finish(start_time):
+def finish():
     #%% Finish
     elapsed_time = time.time() - start_time
     hour = int(elapsed_time/3600)
     minite = int(np.mod((elapsed_time/60),60))
     sec = int(np.mod(elapsed_time,60))
     print("\nElapsed time: {0:02}h {1:02}m {2:02}s".format(hour,minite,sec))
-    print('\n{} {} Successfully finished!!\n'.format(os.path.basename(sys.argv[0]), ' '.join(sys.argv[1:])))
+    print("\n{} {}".format(os.path.basename(sys.argv[0]), ' '.join(sys.argv[1:])), flush=True)
     print('Output directory: {}\n'.format(os.path.relpath(tsadir)))
 
 
@@ -204,12 +213,12 @@ def run_133(current_iter):
 
 
 def main():
-    start_time = start()
+    start()
     init_args()
     set_input_output()
     get_ifgdates()
     iterative_correction()
-    finish(start_time)
+    finish()
 
 
 if __name__ == "__main__":

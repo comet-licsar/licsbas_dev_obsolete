@@ -193,7 +193,7 @@ def main():
 
     # directory settings
     set_input_output(args)
-    length, width = read_length_width(ccdir)
+    length, width = read_length_width()
     ifgdates = tools_lib.get_ifgdates(ifgdir)
 
     # copy everything from last iter to final

@@ -4,10 +4,10 @@
 Overview
 ========
 This script:
-copies file 130cum*.h5 to cum.h5
-copies folder 130results* to results
-calcs n_unw, n_loop_err, coh_avg
-assumbles all results into cum.h5
+ - copies file 130cum*.h5 to cum.h5
+ - copies folder 130results* to results
+ - calcs n_unw, n_loop_err, coh_avg
+ - assumbles all results into cum.h5
 
 ===============
 Input & output files

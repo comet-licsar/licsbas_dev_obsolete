@@ -75,7 +75,7 @@ def read_length_width():
 
 
 def calc_n_unw():
-    n_unw = np.zeros((length, width), dtype=np.int16)
+    n_unw = np.zeros((length, width))
     for ifgd in ifgdates:
         unwfile = os.path.join(ifgdir, ifgd, ifgd+'.unw')
         unw = io_lib.read_img(unwfile, length, width)
@@ -86,7 +86,7 @@ def calc_n_unw():
     ### Write to file
     n_unw[n_unw == 0] = np.nan
     n_unwfile = os.path.join(resultsdir, 'n_unw')
-    np.float32(n_unw).tofile(n_unwfile)
+    n_unw.tofile(n_unwfile)
 
     ### Save png
     title = 'Number of used unw data'
@@ -148,7 +148,7 @@ def calc_n_loop_error(n_unw):
     n_loop = Aloop.shape[0]
 
     ### Count loop error by pixel
-    n_loop_err = np.zeros((length, width), dtype=np.int16)
+    n_loop_err = np.zeros((length, width))
     for i in range(0, len(Aloop)):
         if np.mod(i, 100) == 0:
             print("  {0:3}/{1:3}th loop...".format(i, n_loop), flush=True)
@@ -174,9 +174,9 @@ def calc_n_loop_error(n_unw):
 
     # write to file
     n_loop_err[n_unw == 0] = np.nan
-    n_loop_err = np.array(n_loop_err, dtype=np.int16)
+    # n_loop_err = np.array(n_loop_err)
     n_loop_err_file = os.path.join(resultsdir, 'n_loop_err')
-    np.float32(n_loop_err).tofile(n_loop_err_file)
+    n_loop_err.tofile(n_loop_err_file)
 
     # save png
     title = 'Number of unclosed loops'
@@ -189,7 +189,7 @@ def write_h5(cumh5file):
     print('\nWriting to HDF5 file...')
     cumh5 = h5.File(cumh5file, 'w')
     compress = 'gzip'
-    indices = ['coh_avg', 'hgt', 'n_loop_err', 'n_unw'] #, 'slc.mli']
+    indices = ['coh_avg', 'hgt', 'n_loop_err', 'n_unw', 'slc.mli']
 
     for index in indices:
         file = os.path.join(resultsdir, index)
@@ -199,14 +199,14 @@ def write_h5(cumh5file):
         else:
             print('  {} not exist in results dir. Skip'.format(index))
 
-    # LOSvecs = ['E.geo', 'N.geo', 'U.geo']
-    # for LOSvec in LOSvecs:
-    #     file = os.path.join(geoc_dir, LOSvec)
-    #     if os.path.exists(file):
-    #         data = io_lib.read_img(file, length, width)
-    #         cumh5.create_dataset(LOSvec, data=data, compression=compress)
-    #     else:
-    #         print('  {} not exist in GEOCml dir. Skip'.format(LOSvec))
+    LOSvecs = ['E.geo', 'N.geo', 'U.geo']
+    for LOSvec in LOSvecs:
+        file = os.path.join(geoc_dir, LOSvec)
+        if os.path.exists(file):
+            data = io_lib.read_img(file, length, width)
+            cumh5.create_dataset(LOSvec, data=data, compression=compress)
+        else:
+            print('  {} not exist in GEOCml dir. Skip'.format(LOSvec))
 
     cumh5.close()
 

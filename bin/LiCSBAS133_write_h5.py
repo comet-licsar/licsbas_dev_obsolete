@@ -2,6 +2,10 @@
 """
 v1.0 20220928 Qi Ou, Leeds Uni
 
+========
+Overview
+========
+
 Copy file 130cum*.h5 to cum.h5
 Copy folder 130results* to results
 Calculate n_unw, n_loop_err, coh_avg
@@ -42,6 +46,9 @@ Outputs in TS_GEOCml*/ :
    - coh_avg[.png]       : Average coherence
    - n_loop_err[.png]    : Number of remaining loop errors (>pi) in data to be used
 
+=====
+Usage
+=====
 """
 
 

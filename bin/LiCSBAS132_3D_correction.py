@@ -63,6 +63,8 @@ import shutil
 
 
 def init_args():
+    global args
+
     parser = argparse.ArgumentParser(description="Detect coregistration error")
     parser.add_argument('-f', "--frame_dir", default="./", help="directory of LiCSBAS output of a particular frame")
     parser.add_argument('-c', '--comp_cc_dir', default="GEOCml10GACOS", help="folder containing connected components and cc files")
@@ -72,7 +74,6 @@ def init_args():
     parser.add_argument('-r', '--thresh', default=0.5, help="threshold RMS residual per ifg as a fraction of 2 pi radian, used if info/131resid_2pi.txt doesn't exist")
     parser.add_argument('--suffix', default="", type=str, help="suffix of the input 131resid_2pi*.txt and outputs")
     args = parser.parse_args()
-    global args
 
 
 def start():
@@ -96,6 +97,8 @@ def finish(start_time):
 
 
 def set_input_output():
+    global ccdir, unwdir, tsadir, resdir, infodir, netdir, correct_dir, good_png_dir, bad_png_dir, integer_png_dir, mode_png_dir
+
     # define input directories
     ccdir = os.path.abspath(os.path.join(args.frame_dir, args.comp_cc_dir))
     unwdir = os.path.abspath(os.path.join(args.frame_dir, args.unw_dir))
@@ -126,10 +129,11 @@ def set_input_output():
     if os.path.exists(mode_png_dir): shutil.rmtree(mode_png_dir)
     Path(mode_png_dir).mkdir(parents=True, exist_ok=True)
 
-    global ccdir, unwdir, tsadir, resdir, infodir, netdir, correct_dir, good_png_dir, bad_png_dir, integer_png_dir, mode_png_dir
 
 
 def get_para():
+    global width, length, coef_r2m, thresh, ref_x, ref_y
+
     # read ifg size and satellite frequency
     mlipar = os.path.join(ccdir, 'slc.mli.par')
     width = int(io_lib.get_param_par(mlipar, 'range_samples'))
@@ -153,10 +157,11 @@ def get_para():
             ref_x = int(line.split(":")[0])
             ref_y = int(line.split("/")[1].split(":")[0])
 
-    global width, length, coef_r2m, thresh, ref_x, ref_y
 
 
 def correction_decision():
+    global bad_ifg_not_corrected, ifg_corrected_by_mode, ifg_corrected_by_integer, good_ifg
+
     # set up empty ifg lists
     good_ifg = []
     ifg_corrected_by_mode = []
@@ -273,7 +278,6 @@ def correction_decision():
                 unw_corrected.flatten().tofile(os.path.join(correct_pair_dir, pair + '.unw'))
                 del con, unw, unw_corrected, res_num_2pi, res_integer, res_mm, res_rad, res_rms, correction_title
 
-    global bad_ifg_not_corrected, ifg_corrected_by_mode, ifg_corrected_by_integer, good_ifg
 
 
 def plot_correction(pair, unw, con, unw_corrected, res_num_2pi, res_integer, res_mode, correction_title, res_rms, png_path):

@@ -51,6 +51,8 @@ def finish(start_time):
 
 
 def set_input_output(args):
+    global geoc_dir, ccdir, ifgdir, tsadir, infodir, last_result_dir, resultsdir, last_cumh5file, cumh5file
+
     # define input directories
     geoc_dir = os.path.abspath(os.path.join(args.frame_dir, args.geoc_dir))
     ccdir = os.path.abspath(os.path.join(args.frame_dir, args.comp_cc_dir))
@@ -61,7 +63,6 @@ def set_input_output(args):
     resultsdir = os.path.join(tsadir, 'results')
     last_cumh5file = os.path.join(tsadir, '130cum{}.h5'.format(args.suffix))
     cumh5file = os.path.join(tsadir, 'cum.h5')
-    global geoc_dir, ccdir, ifgdir, tsadir, infodir, last_result_dir, resultsdir, last_cumh5file, cumh5file
 
 
 def read_length_width():
@@ -184,6 +185,8 @@ def write_h5(cumh5file):
 
 
 def main():
+    global length, width, ifgdates
+
     # intialise
     start_time = start()
     args = init_args()
@@ -192,7 +195,6 @@ def main():
     set_input_output(args)
     length, width = read_length_width(ccdir)
     ifgdates = tools_lib.get_ifgdates(ifgdir)
-    global length, width, ifgdates
 
     # copy everything from last iter to final
     shutil.copyfile(last_cumh5file, cumh5file)

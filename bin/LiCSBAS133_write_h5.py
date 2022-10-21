@@ -59,7 +59,7 @@ def set_input_output(args):
     ifgdir = os.path.abspath(os.path.join(args.frame_dir, args.comp_cc_dir+args.suffix))
     tsadir = os.path.abspath(os.path.join(args.frame_dir, args.ts_dir))
     infodir = os.path.join(tsadir, 'info')
-    last_result_dir = os.path.join(tsadir, '130results{}'.format(iter))
+    last_result_dir = os.path.join(tsadir, '130results{}'.format(args.suffix))
     resultsdir = os.path.join(tsadir, 'results')
     last_cumh5file = os.path.join(tsadir, '130cum{}.h5'.format(args.suffix))
     cumh5file = os.path.join(tsadir, 'cum.h5')

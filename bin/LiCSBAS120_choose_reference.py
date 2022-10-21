@@ -1,5 +1,43 @@
 #!/usr/bin/env python3
+"""
+========
+Overview
+========
+This script:
+ - calculates the block sum of unw pixels
+ - calculates the block sum of coherence
+ - calculates the block sum of connected component size
+ - calculates the block std of height
+ - combine and normalise a proxy [0-1] of suitability of reference window
+ - choose amongst the selected windows (above threshold) the nearest to desired reference location
+ - discard ifgs with all nan values in the chosen reference window
 
+===============
+Input & output files
+===============
+
+Inputs in GEOCml*/:
+ - slc.mli.par
+ - hgt
+ - yyyymmdd_yyyymmdd/
+   - yyyymmdd_yyyymmdd.cc
+   - yyyymmdd_yyyymmdd.conncomp
+   - yyyymmdd_yyyymmdd.unw
+
+Outputs in TS_GEOCml*/ :
+ - info/
+  - 120ref.txt        : refx1:refx2/refy1:refy2
+  - 120bad_ifg.txt    : list of ifgs with all nan values within the chosen reference window
+  - 120_reference.png : proxy plots
+
+ - networks/
+  - network120*png
+
+=====
+Usage
+=====
+LiCSBAS120_choose_reference.py [-h] [-f FRAME_DIR] [-g UNW_DIR] [-t TS_DIR] [-w WIN] [-r [0-1]] [--w_unw [0-1]] [--w_coh [0-1]] [--w_con [0-1]] [--w_hgt [0-1]] [--refx [0-1]] [--refy [0-1]]
+"""
 import numpy as np
 import matplotlib.pyplot as plt
 import os

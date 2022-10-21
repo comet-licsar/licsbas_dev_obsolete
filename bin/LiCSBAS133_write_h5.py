@@ -22,10 +22,10 @@ import LiCSBAS_plot_lib as plot_lib
 
 def init_args():
     parser = argparse.ArgumentParser(description="""
-    Assemble all results into cum.h5
-    Assemble all results into cum.h5
-    Assemble all results into cum.h5
-    Assemble all results into cum.h5
+    \nAssemble all results into cum.h5
+    \nAssemble all results into cum.h5
+    \nAssemble all results into cum.h5
+    \nAssemble all results into cum.h5
     """)
     parser.add_argument('-f', "--frame_dir", default="./", help="directory of LiCSBAS output of a particular frame")
     parser.add_argument('-c', '--comp_cc_dir', default="GEOCml10GACOS", help="folder containing connected components and cc files")

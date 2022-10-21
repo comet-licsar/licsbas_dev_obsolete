@@ -154,7 +154,7 @@ def calc_n_loop_error():
 
     n_loop_err = np.array(n_loop_err, dtype=np.int16)
     n_loop_err_file = os.path.join(resultsdir, 'n_loop_err')
-    n_loop_err.tofile(n_loop_err_file)
+    np.float32(n_loop_err).tofile(n_loop_err_file)
 
 
 def write_h5(cumh5file):

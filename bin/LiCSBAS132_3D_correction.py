@@ -50,6 +50,8 @@ import os
 import copy
 import glob
 import argparse
+import sys
+import time
 from pathlib import Path
 #import cmcrameri as cm
 from matplotlib import cm
@@ -60,48 +62,40 @@ import LiCSBAS_plot_lib as plot_lib
 import shutil
 
 
-def plot_correction():
-    fig, ax = plt.subplots(2, 3, figsize=(9, 5))
-    fig.suptitle(pair)
-    for x in ax[:, :].flatten():
-        x.axes.xaxis.set_ticklabels([])
-        x.axes.yaxis.set_ticklabels([])
-    unw_vmin = np.nanpercentile(unw, 0.5)
-    unw_vmax = np.nanpercentile(unw, 99.5)
-    im_con = ax[0, 0].imshow(con, cmap=cm.tab10, interpolation='nearest')
-    im_unw = ax[0, 1].imshow(unw, vmin=unw_vmin, vmax=unw_vmax, cmap=cm.RdBu, interpolation='nearest')
-    im_unw = ax[0, 2].imshow(unw_corrected, vmin=unw_vmin, vmax=unw_vmax, cmap=cm.RdBu, interpolation='nearest')
-    im_res = ax[1, 0].imshow(res_num_2pi, vmin=-2, vmax=2, cmap=cm.RdBu, interpolation='nearest')
-    im_res = ax[1, 1].imshow(res_integer, vmin=-2, vmax=2, cmap=cm.RdBu, interpolation='nearest')
-    im_res = ax[1, 2].imshow(res_mode, vmin=-2, vmax=2, cmap=cm.RdBu, interpolation='nearest')
-    ax[1, 0].scatter(ref_x, ref_y, c='r', s=10)
-    ax[0, 0].set_title("Components")
-    ax[0, 1].set_title("Unw (rad)")
-    ax[0, 2].set_title(correction_title)
-    ax[1, 0].set_title("Residual/2pi (RMS={:.2f})".format(res_rms))
-    ax[1, 1].set_title("Nearest integer")
-    ax[1, 2].set_title("Component mode")
-    # fig.colorbar(im_con, ax=ax[0, 0], location='right', shrink=0.8)
-    fig.colorbar(im_unw, ax=ax[0, :], location='right', shrink=0.8)
-    fig.colorbar(im_res, ax=ax[1, :], location='right', shrink=0.8)
-    plt.savefig(png_path, dpi=300, bbox_inches='tight')
-    plt.close()
-
-
-if __name__ == "__main__":
-
+def init_args():
     parser = argparse.ArgumentParser(description="Detect coregistration error")
     parser.add_argument('-f', "--frame_dir", default="./", help="directory of LiCSBAS output of a particular frame")
     parser.add_argument('-c', '--comp_cc_dir', default="GEOCml10GACOS", help="folder containing connected components and cc files")
     parser.add_argument('-g', '--unw_dir', default="GEOCml10GACOS", help="folder containing unw input to be corrected")
     parser.add_argument('-r', '--correct_dir', default="GEOCml10GACOS_corrected", help="folder containing corrected unw input")
-    # parser.add_argument('-s', '--resid_dir', default="13resid", help="folder containing .res files")
     parser.add_argument('-t', '--ts_dir', default="TS_GEOCml10GACOS", help="folder containing time series")
     parser.add_argument('-r', '--thresh', default=0.5, help="threshold RMS residual per ifg as a fraction of 2 pi radian, used if info/131resid_2pi.txt doesn't exist")
     parser.add_argument('--suffix', default="", type=str, help="suffix of the input 131resid_2pi*.txt and outputs")
-    # parser.add_argument('--output_suffix', default="", type=str, help="suffix of the output")
     args = parser.parse_args()
+    global args
 
+
+def start():
+    # intialise and print info on screen
+    start = time.time()
+    ver="1.0"; date=20221020; author="Qi Ou"
+    print("\n{} ver{} {} {}".format(os.path.basename(sys.argv[0]), ver, date, author), flush=True)
+    print("{} {}".format(os.path.basename(sys.argv[0]), ' '.join(sys.argv[1:])), flush=True)
+    return start
+
+
+def finish(start_time):
+    # %% Finish
+    elapsed_time = time.time() - start_time
+    hour = int(elapsed_time / 3600)
+    minite = int(np.mod((elapsed_time / 60), 60))
+    sec = int(np.mod(elapsed_time, 60))
+    print("\nElapsed time: {0:02}h {1:02}m {2:02}s".format(hour, minite, sec))
+    print('\n{} {} Successfully finished!!\n'.format(os.path.basename(sys.argv[0]), ' '.join(sys.argv[1:])))
+    print('Output directory: {}\n'.format(os.path.relpath(correct_dir)))
+
+
+def set_input_output():
     # define input directories
     ccdir = os.path.abspath(os.path.join(args.frame_dir, args.comp_cc_dir))
     unwdir = os.path.abspath(os.path.join(args.frame_dir, args.unw_dir))
@@ -132,6 +126,10 @@ if __name__ == "__main__":
     if os.path.exists(mode_png_dir): shutil.rmtree(mode_png_dir)
     Path(mode_png_dir).mkdir(parents=True, exist_ok=True)
 
+    global ccdir, unwdir, tsadir, resdir, infodir, netdir, correct_dir, good_png_dir, bad_png_dir, integer_png_dir, mode_png_dir
+
+
+def get_para():
     # read ifg size and satellite frequency
     mlipar = os.path.join(ccdir, 'slc.mli.par')
     width = int(io_lib.get_param_par(mlipar, 'range_samples'))
@@ -155,6 +153,10 @@ if __name__ == "__main__":
             ref_x = int(line.split(":")[0])
             ref_y = int(line.split("/")[1].split(":")[0])
 
+    global width, length, coef_r2m, thresh, ref_x, ref_y
+
+
+def correction_decision():
     # set up empty ifg lists
     good_ifg = []
     ifg_corrected_by_mode = []
@@ -170,9 +172,9 @@ if __name__ == "__main__":
         res_rad = res_mm / coef_r2m
         res_num_2pi = res_rad / 2 / np.pi
         counts, bins = np.histogram(res_num_2pi.flatten(), np.arange(-2.5, 2.6, 0.1))
-        peak = bins[counts.argmax()]+0.05
+        peak = bins[counts.argmax()] + 0.05
         res_num_2pi = res_num_2pi - peak
-        res_rms = np.sqrt(np.nanmean(res_num_2pi**2))
+        res_rms = np.sqrt(np.nanmean(res_num_2pi ** 2))
 
         # define output dir
         correct_pair_dir = os.path.join(correct_dir, pair)
@@ -186,17 +188,17 @@ if __name__ == "__main__":
             unwfile = os.path.join(unwdir, pair, pair + '.unw')
             linkfile = os.path.join(correct_pair_dir, pair + '.unw')
             os.link(unwfile, linkfile)
-            #relative_path = os.path.relpath(unwfile, correct_unw_dir+'/')
-            #os.symlink(relative_path, linkfile)
-            #shutil.copy(unwfile, correct_unw_dir)            
+            # relative_path = os.path.relpath(unwfile, correct_unw_dir+'/')
+            # os.symlink(relative_path, linkfile)
+            # shutil.copy(unwfile, correct_unw_dir)
 
             ## plot_res
             plt.imshow(res_num_2pi, vmin=-2, vmax=2, cmap=cm.RdBu, interpolation='nearest')
-            plt.title(pair+" RMS_res={:.2f}".format(res_rms))
+            plt.title(pair + " RMS_res={:.2f}".format(res_rms))
             plt.colorbar()
             png_path = os.path.join(resdir, 'good_ifgs/')
             plt.tight_layout()
-            plt.savefig(good_png_dir+'{}.png'.format(pair), dpi=300, bbox_inches='tight')
+            plt.savefig(good_png_dir + '{}.png'.format(pair), dpi=300, bbox_inches='tight')
             plt.close()
 
             del res_num_2pi, res_mm, res_rad, res_rms
@@ -204,11 +206,12 @@ if __name__ == "__main__":
         else:
             print("RMS residual = {:2f}, not good...".format(res_rms))
             res_integer = np.round(res_num_2pi)
-            rms_res_integer_corrected = np.sqrt(np.nanmean((res_num_2pi - res_integer)**2))
+            rms_res_integer_corrected = np.sqrt(np.nanmean((res_num_2pi - res_integer) ** 2))
             if rms_res_integer_corrected > thresh:
                 bad_ifg_not_corrected.append(pair)
-                print("Integer reduces rms residuals to {:.2f}, still above threshold of {:.2f}, discard...".format(rms_res_integer_corrected, thresh))
-               
+                print("Integer reduces rms residuals to {:.2f}, still above threshold of {:.2f}, discard...".format(
+                    rms_res_integer_corrected, thresh))
+
                 ## plot_res
                 fig, ax = plt.subplots(1, 2, figsize=(9, 6))
                 fig.suptitle(pair)
@@ -221,14 +224,14 @@ if __name__ == "__main__":
                 ax[0].set_title("Residual/2pi (RMS={:.2f})".format(res_rms))
                 ax[1].set_title("Nearest integer")
                 plt.colorbar(im_res, ax=ax, location='right', shrink=0.8)
-                plt.savefig(bad_png_dir+'{}.png'.format(pair), dpi=300, bbox_inches='tight')
+                plt.savefig(bad_png_dir + '{}.png'.format(pair), dpi=300, bbox_inches='tight')
                 plt.close()
                 del res_num_2pi, res_mm, res_rad, res_rms, res_integer, rms_res_integer_corrected
 
             else:
                 # read in unwrapped ifg and connected components
                 unwfile = os.path.join(unwdir, pair, pair + '.unw')
-                con_file = os.path.join(ccdir, pair, pair+'.conncomp')
+                con_file = os.path.join(ccdir, pair, pair + '.conncomp')
                 unw = np.fromfile(unwfile, dtype=np.float32).reshape((length, width))
                 con = np.fromfile(con_file, dtype=np.int8).reshape((length, width))
 
@@ -242,31 +245,66 @@ if __name__ == "__main__":
                     res_mode[con == j] = mode
 
                 # check if component modes does a good job
-                rms_res_mode_corrected = np.sqrt(np.nanmean((res_num_2pi - res_mode)**2))
+                rms_res_mode_corrected = np.sqrt(np.nanmean((res_num_2pi - res_mode) ** 2))
 
                 # if component mode is useful
                 if rms_res_mode_corrected < thresh:
-                    print("Component modes reduces rms residuals to {:.2f}, below threshold of {:.2f}, correcting by component mode...".format(rms_res_mode_corrected, thresh))
+                    print(
+                        "Component modes reduces rms residuals to {:.2f}, below threshold of {:.2f}, correcting by component mode...".format(
+                            rms_res_mode_corrected, thresh))
                     unw_corrected = unw - res_mode * 2 * np.pi
                     correction_title = "Mode_corrected"
                     ifg_corrected_by_mode.append(pair)
                     png_path = os.path.join(mode_png_dir, '{}.png'.format(pair))
 
                 else:  # if component mode is not useful
-                    print("Component modes reduces rms residuals to {:.2f}, above threshold of {:.2f}...".format(rms_res_mode_corrected, thresh))
-                    print("Integer reduces rms residuals to {:.2f}, correcting by nearest integer...".format(rms_res_integer_corrected))
+                    print("Component modes reduces rms residuals to {:.2f}, above threshold of {:.2f}...".format(
+                        rms_res_mode_corrected, thresh))
+                    print("Integer reduces rms residuals to {:.2f}, correcting by nearest integer...".format(
+                        rms_res_integer_corrected))
                     unw_corrected = unw - res_integer * 2 * np.pi
                     correction_title = "Integer_corrected"
                     ifg_corrected_by_integer.append(pair)
                     png_path = os.path.join(integer_png_dir, '{}.png'.format(pair))
 
-                plot_correction()
+                plot_correction(pair, unw, con, unw_corrected, res_num_2pi, res_integer, res_mode, correction_title, res_rms, png_path)
 
                 # save the corrected unw
-                # Path("{}/{}_corrected/{}/".format(correct_dir, pair)).mkdir(parents=True, exist_ok=True)
-                # unw_corrected.flatten().tofile("{}/{}_corrected/{}/{}.unw".format(args.frame_dir, args.unw_dir, pair, pair))
                 unw_corrected.flatten().tofile(os.path.join(correct_pair_dir, pair + '.unw'))
                 del con, unw, unw_corrected, res_num_2pi, res_integer, res_mm, res_rad, res_rms, correction_title
+
+    global bad_ifg_not_corrected, ifg_corrected_by_mode, ifg_corrected_by_integer, good_ifg
+
+
+def plot_correction(pair, unw, con, unw_corrected, res_num_2pi, res_integer, res_mode, correction_title, res_rms, png_path):
+    fig, ax = plt.subplots(2, 3, figsize=(9, 5))
+    fig.suptitle(pair)
+    for x in ax[:, :].flatten():
+        x.axes.xaxis.set_ticklabels([])
+        x.axes.yaxis.set_ticklabels([])
+    unw_vmin = np.nanpercentile(unw, 0.5)
+    unw_vmax = np.nanpercentile(unw, 99.5)
+    im_con = ax[0, 0].imshow(con, cmap=cm.tab10, interpolation='nearest')
+    im_unw = ax[0, 1].imshow(unw, vmin=unw_vmin, vmax=unw_vmax, cmap=cm.RdBu, interpolation='nearest')
+    im_unw = ax[0, 2].imshow(unw_corrected, vmin=unw_vmin, vmax=unw_vmax, cmap=cm.RdBu, interpolation='nearest')
+    im_res = ax[1, 0].imshow(res_num_2pi, vmin=-2, vmax=2, cmap=cm.RdBu, interpolation='nearest')
+    im_res = ax[1, 1].imshow(res_integer, vmin=-2, vmax=2, cmap=cm.RdBu, interpolation='nearest')
+    im_res = ax[1, 2].imshow(res_mode, vmin=-2, vmax=2, cmap=cm.RdBu, interpolation='nearest')
+    ax[1, 0].scatter(ref_x, ref_y, c='r', s=10)
+    ax[0, 0].set_title("Components")
+    ax[0, 1].set_title("Unw (rad)")
+    ax[0, 2].set_title(correction_title)
+    ax[1, 0].set_title("Residual/2pi (RMS={:.2f})".format(res_rms))
+    ax[1, 1].set_title("Nearest integer")
+    ax[1, 2].set_title("Component mode")
+    # fig.colorbar(im_con, ax=ax[0, 0], location='right', shrink=0.8)
+    fig.colorbar(im_unw, ax=ax[0, :], location='right', shrink=0.8)
+    fig.colorbar(im_res, ax=ax[1, :], location='right', shrink=0.8)
+    plt.savefig(png_path, dpi=300, bbox_inches='tight')
+    plt.close()
+
+
+def save_lists():
 
     #%% save ifg lists to text files.
     bad_ifg_file = os.path.join(infodir, '132bad_ifg{}.txt'.format(args.suffix))
@@ -293,8 +331,10 @@ if __name__ == "__main__":
         for i in good_ifg:
             print('{}'.format(i), file=f)
 
-    #%% Read date, network information and size
-    # ### Get dates
+
+def plot_networks():
+
+    ### Read date, network information and size
     retained_ifgs = good_ifg + ifg_corrected_by_mode + ifg_corrected_by_integer
     corrected_ifgs = ifg_corrected_by_mode + ifg_corrected_by_integer
     retained_ifgs.sort()
@@ -302,7 +342,7 @@ if __name__ == "__main__":
     imdates = tools_lib.ifgdates2imdates(retained_ifgs)
     n_im = len(imdates)
 
-    #%% Plot network
+    ### Plot network
     ## Read bperp data or dummy
     bperp_file = os.path.join(ccdir, 'baselines')
     if os.path.exists(bperp_file):
@@ -319,3 +359,17 @@ if __name__ == "__main__":
     pngfile = os.path.join(netdir, 'network132_all{}.png'.format(args.suffix))
     plot_lib.plot_corrected_network(retained_ifgs, bperp, [], pngfile)
 
+
+def main():
+    start()
+    init_args()
+    set_input_output()
+    get_para()
+    correction_decision()
+    save_lists()
+    plot_networks()
+    finish()
+
+
+if __name__ == "__main__":
+    main()

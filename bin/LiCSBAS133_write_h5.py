@@ -17,6 +17,7 @@ import xarray as xr
 import LiCSBAS_io_lib as io_lib
 import LiCSBAS_tools_lib as tools_lib
 import LiCSBAS_loop_lib as loop_lib
+import LiCSBAS_plot_lib as plot_lib
 
 
 def init_args():
@@ -80,8 +81,17 @@ def calc_n_unw():
         unw = io_lib.read_img(unwfile, length, width)
         unw[unw == 0] = np.nan # Fill 0 with nan
         n_unw += ~np.isnan(unw) # Summing number of unnan unw
+
+    ### Write to file
     n_unwfile = os.path.join(resultsdir, 'n_unw')
     np.float32(n_unw).tofile(n_unwfile)
+
+    ### Save png
+    title = 'Number of used unw data'
+    cmap_noise = 'viridis'
+    imdates = tools_lib.ifgdates2imdates(ifgdates)
+    n_im = len(imdates)
+    plot_lib.make_im_png(n_unw, n_unwfile+'.png', cmap_noise, title, n_im)
 
 
 def calc_coh_avg():
@@ -102,8 +112,15 @@ def calc_coh_avg():
     n_coh[n_coh==0] = 1 #to avoid zero division
     coh_avg = coh_avg/n_coh
     coh_avg[coh_avg==0] = np.nan
+
+    ### Write to file
     coh_avgfile = os.path.join(resultsdir, 'coh_avg')
     coh_avg.tofile(coh_avgfile)
+
+    ### Save png
+    title = 'Average coherence'
+    cmap_noise = 'viridis'
+    plot_lib.make_im_png(coh_avg, coh_avgfile+'.png', cmap_noise, title)
 
 
 def calc_n_loop_error():
@@ -152,9 +169,15 @@ def calc_n_loop_error():
         da.loc[:, :, ifgd13] = np.logical_or(da.loc[:, :, ifgd13], is_ok)
         n_loop_err = n_loop_err + ~is_ok  # suspected unw error
 
+    # write to file
     n_loop_err = np.array(n_loop_err, dtype=np.int16)
     n_loop_err_file = os.path.join(resultsdir, 'n_loop_err')
     np.float32(n_loop_err).tofile(n_loop_err_file)
+
+    # save png
+    title = 'Number of unclosed loops'
+    cmap_noise_r = 'viridis_r'
+    plot_lib.make_im_png(n_loop_err, n_loop_err_file+'.png', cmap_noise_r, title)
 
 
 def write_h5(cumh5file):
@@ -172,14 +195,14 @@ def write_h5(cumh5file):
         else:
             print('  {} not exist in results dir. Skip'.format(index))
 
-    LOSvecs = ['E.geo', 'N.geo', 'U.geo']
-    for LOSvec in LOSvecs:
-        file = os.path.join(geoc_dir, LOSvec)
-        if os.path.exists(file):
-            data = io_lib.read_img(file, length, width)
-            cumh5.create_dataset(LOSvec, data=data, compression=compress)
-        else:
-            print('  {} not exist in GEOCml dir. Skip'.format(LOSvec))
+    # LOSvecs = ['E.geo', 'N.geo', 'U.geo']
+    # for LOSvec in LOSvecs:
+    #     file = os.path.join(geoc_dir, LOSvec)
+    #     if os.path.exists(file):
+    #         data = io_lib.read_img(file, length, width)
+    #         cumh5.create_dataset(LOSvec, data=data, compression=compress)
+    #     else:
+    #         print('  {} not exist in GEOCml dir. Skip'.format(LOSvec))
 
     cumh5.close()
 

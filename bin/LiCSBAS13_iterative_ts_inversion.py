@@ -142,7 +142,7 @@ def iterative_correction():
         os.link(unwfile, linkfile)
 
     # run 0th iteration
-    # run_130(iter_unwdir, iter)
+    run_130(iter_unwdir, iter)
     run_131(iter)
     resid_threshold_file = os.path.join(infodir, '131resid_2pi{}.txt'.format(int(iter)))
     current_thresh = float(io_lib.get_param_par(resid_threshold_file, 'RMS_thresh'))

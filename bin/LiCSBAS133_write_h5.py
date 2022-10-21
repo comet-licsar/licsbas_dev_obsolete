@@ -1,8 +1,50 @@
 #!/usr/bin/env python3
 """
 v1.0 20220928 Qi Ou, Leeds Uni
+
+Copy file 130cum*.h5 to cum.h5
+Copy folder 130results* to results
+Calculate n_unw, n_loop_err, coh_avg
 Assemble all results into cum.h5
+
+===============
+Input & output files
+===============
+
+Inputs in GEOCml*/ (--comp_cc_dir):
+ - slc.mli.par
+ - yyyymmdd_yyyymmdd/
+   - yyyymmdd_yyyymmdd.cc
+
+Inputs in GEOCml*/ (--unw_dir):
+ - yyyymmdd_yyyymmdd/
+   - yyyymmdd_yyyymmdd.unw
+
+Inputs in TS_GEOCml*/ :
+ - 130cum*.h5            : Cumulative displacement (time-seires) in mm from final iteration, to copy to cum.h5
+
+ - 130results*           : Results from final iteration of automatic correction, to copy to results
+    -vel[.png]           : Velocity in mm/yr (positive means LOS decrease; uplift)
+   - vintercept[.png]    : Constant part of linear velocity (c for vt+c) in mm
+   - resid_rms[.png]     : RMS of residual in mm
+   - n_gap[.png]         : Number of gaps in SB network
+   - n_ifg_noloop[.png]  :  Number of ifgs with no loop
+   - maxTlen[.png]       : Max length of continous SB network in year
+
+ - info
+   - 120ref.txt          : Reference window
+
+Outputs in TS_GEOCml*/ :
+ - cum.h5                : Cumulative displacement (time-seires) in mm
+
+ - results/
+   - n_unw[.png]         : Number of available unwrapped data to be used
+   - coh_avg[.png]       : Average coherence
+   - n_loop_err[.png]    : Number of remaining loop errors (>pi) in data to be used
+
 """
+
+
 #%% Import
 import os
 import time
@@ -21,10 +63,18 @@ import LiCSBAS_plot_lib as plot_lib
 
 
 def init_args():
+    # parser = argparse.ArgumentParser(description="Assemble all results into cum.h5")
+    # parser.add_argument('-f', "--frame_dir", default="./", help="directory of LiCSBAS output")
+    # parser.add_argument('-c', '--comp_cc_dir', default="GEOCml10GACOS", help="folder containing connected components and coherence files")
+    # parser.add_argument('-t', '--ts_dir', default="TS_GEOCml10GACOS", help="folder containing time series")
+    # parser.add_argument('--suffix', default="", type=str, help="suffix of the last iteration")
+    # args = parser.parse_args()
+    # return args
+
     parser = argparse.ArgumentParser(description="Assemble all results into cum.h5")
-    parser.add_argument('-f', "--frame_dir", default="./", help="directory of LiCSBAS output")
-    parser.add_argument('-c', '--comp_cc_dir', default="GEOCml10GACOS", help="folder containing connected components and coherence files")
-    parser.add_argument('-t', '--ts_dir', default="TS_GEOCml10GACOS", help="folder containing time series")
+    parser.add_argument('-f', dest='frame_dir', default="./", help="directory of LiCSBAS output")
+    parser.add_argument('-c', dest='comp_cc_dir', default="GEOCml10GACOS", help="folder containing connected components and coherence files")
+    parser.add_argument('-t', dest='ts_dir', default="TS_GEOCml10GACOS", help="folder containing time series")
     parser.add_argument('--suffix', default="", type=str, help="suffix of the last iteration")
     args = parser.parse_args()
     return args

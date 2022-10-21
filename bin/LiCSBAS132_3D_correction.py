@@ -181,13 +181,13 @@ def correction_decision():
         res_num_2pi = res_num_2pi - peak
         res_rms = np.sqrt(np.nanmean(res_num_2pi ** 2))
 
-        # define output dir
-        correct_pair_dir = os.path.join(correct_dir, pair)
-        Path(correct_pair_dir).mkdir(parents=True, exist_ok=True)
-
         if res_rms < thresh:
             good_ifg.append(pair)
             print("RMS residual = {:.2f}, good...".format(res_rms))
+
+            # define output dir
+            correct_pair_dir = os.path.join(correct_dir, pair)
+            Path(correct_pair_dir).mkdir(parents=True, exist_ok=True)
 
             # Link unw
             unwfile = os.path.join(unwdir, pair, pair + '.unw')
@@ -273,6 +273,10 @@ def correction_decision():
                     png_path = os.path.join(integer_png_dir, '{}.png'.format(pair))
 
                 plot_correction(pair, unw, con, unw_corrected, res_num_2pi, res_integer, res_mode, correction_title, res_rms, png_path)
+
+                # define output dir
+                correct_pair_dir = os.path.join(correct_dir, pair)
+                Path(correct_pair_dir).mkdir(parents=True, exist_ok=True)
 
                 # save the corrected unw
                 unw_corrected.flatten().tofile(os.path.join(correct_pair_dir, pair + '.unw'))
@@ -365,14 +369,14 @@ def plot_networks():
 
 
 def main():
-    start()
+    start_time = start()
     init_args()
     set_input_output()
     get_para()
     correction_decision()
     save_lists()
     plot_networks()
-    finish()
+    finish(start_time)
 
 
 if __name__ == "__main__":

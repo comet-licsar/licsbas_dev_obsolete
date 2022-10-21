@@ -126,7 +126,11 @@ def get_ifgdates():
     ifgdates.sort()
 
 
-def first_iteration(iter_unwdir, iter_unw_path):
+def first_iteration(iter_unw_path):
+    # remove existing GEOCml10GACOS1 directory
+    if os.path.exists(iter_unw_path): shutil.rmtree(iter_unw_path)
+    Path(iter_unw_path).mkdir(parents=True, exist_ok=True)
+
     # Link unw
     for pair in ifgdates:
         pair_dir = os.path.join(iter_unw_path, pair)
@@ -135,64 +139,68 @@ def first_iteration(iter_unwdir, iter_unw_path):
         linkfile = os.path.join(pair_dir, pair + '.unw')
         os.link(unwfile, linkfile)
 
-    # run 1st iteration
-    run_130(iter_unwdir, iter)
-    run_131(iter)
-
 
 def iterative_correction():
     # define first iteration output dir
-    iter = args.starting_iteration # default 1
-    iter_unwdir = ccdir+"{}".format(int(iter))
-    iter_unw_path = os.path.abspath(os.path.join(args.frame_dir, iter_unwdir))  # to read .unw
-    if os.path.exists(iter_unw_path): shutil.rmtree(iter_unw_path)
-    Path(iter_unw_path).mkdir(parents=True, exist_ok=True)
+    current_iter = args.starting_iteration # default 1
+    current_iter_unwdir = ccdir+"{}".format(int(current_iter))
+    current_iter_unw_abspath = os.path.abspath(os.path.join(args.frame_dir, current_iter_unwdir))  # to read .unw
 
-    if iter == 1:
-        first_iteration(iter_unwdir, iter_unw_path)
+    if current_iter == 1:  # set up unw dir without 11bad and 12bad
+        first_iteration(current_iter_unw_abspath)
 
-    resid_threshold_file = os.path.join(infodir, '131resid_2pi{}.txt'.format(int(iter)))
+    # check if current threshold is determined to decide where to start the iteration.
+    resid_threshold_file = os.path.join(infodir, '131resid_2pi{}.txt'.format(int(current_iter)))
+    if not os.path.exists(resid_threshold_file):
+        run_130(current_iter_unwdir, current_iter)
+        run_131(current_iter)
+
+    # starting current_thresh to compare with target thresh
     current_thresh = float(io_lib.get_param_par(resid_threshold_file, 'RMS_thresh'))
     print("current threshold is {}".format(current_thresh))
 
     # iterative correction
     while current_thresh > args.thresh:
-        print("Iteration {}".format(int(iter)))
+        print("Iteration {}".format(int(current_iter)))
         print("Correction threshold = {:2f}, above target {:2f}, keep correcting...".format(current_thresh, args.thresh))
-        next_iter = iter + 1
+        # define next iteration
+        next_iter = current_iter + 1
         next_iter_unwdir = ccdir + "{}".format(int(next_iter))
 
-        run_132(iter_unwdir, next_iter_unwdir, iter)
+        # 132=correction; 130=inversion; 131=stats
+        run_132(current_iter_unwdir, next_iter_unwdir, current_iter)
         run_130(next_iter_unwdir, next_iter)
         run_131(next_iter)
 
+        # update current_thresh
         resid_threshold_file = os.path.join(infodir, '131resid_2pi{}.txt'.format(int(next_iter)))
         current_thresh = float(io_lib.get_param_par(resid_threshold_file, 'RMS_thresh'))
 
-        iter = next_iter
+        # update iter number
+        current_iter = next_iter
 
     # compile all results into cum.h5
-    run_133(iter)
+    run_133(current_iter)
 
 
-def run_130(d_dir, iter):
+def run_130(unw_dir, current_iter):
     os.system('LiCSBAS130_sb_inv.py -c {} -d {} -t {} --suffix {} --inv_alg WLS --n_para 6 --keep_incfile --nopngs'.format(
-        ccdir, d_dir, args.ts_dir, int(iter)))
+        ccdir, unw_dir, args.ts_dir, int(current_iter)))
 
 
-def run_131(iter):
+def run_131(current_iter):
     os.system('LiCSBAS131_residual_threshold.py -g {} -t {} -p {} --suffix {} '.format(
-        ccdir, args.ts_dir, args.percentile, int(iter)))
+        ccdir, args.ts_dir, args.percentile, int(current_iter)))
 
 
-def run_132(before_dir, after_dir, iter):
+def run_132(before_dir, after_dir, current_iter):
     os.system('LiCSBAS132_3D_correction.py -c {} -g {} -r {} -t {} --suffix {} '.format(
-        ccdir, before_dir, after_dir, args.ts_dir, int(iter)))
+        ccdir, before_dir, after_dir, args.ts_dir, int(current_iter)))
 
 
-def run_133(iter):
+def run_133(current_iter):
     os.system('LiCSBAS133_write_h5.py -c {} -t {} --suffix {} '.format(
-        ccdir, args.ts_dir, int(iter)))
+        ccdir, args.ts_dir, int(current_iter)))
 
 
 def main():

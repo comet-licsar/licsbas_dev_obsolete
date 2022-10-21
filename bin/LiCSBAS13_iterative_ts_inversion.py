@@ -67,6 +67,7 @@ import LiCSBAS_tools_lib as tools_lib
 
 
 def init_args():
+    global args
     parser = argparse.ArgumentParser(description="Detect coregistration error")
     parser.add_argument('-f', "--frame_dir", default="./", help="directory of LiCSBAS output of a particular frame")
     parser.add_argument('-g', '--unw_dir', default="GEOCml10GACOS", help="folder containing unw input")
@@ -97,6 +98,7 @@ def finish(start_time):
 
 
 def set_input_output():
+    global ifgdir, tsadir, infodir, ccdir
     # define input directories
     ccdir = args.unw_dir
     ifgdir = os.path.abspath(os.path.join(args.frame_dir, ccdir))  # to read .unw
@@ -105,6 +107,7 @@ def set_input_output():
 
 
 def get_ifgdates():
+    global ifgdates
     bad_ifg11file = os.path.join(infodir, '11bad_ifg.txt')
     bad_ifg12file = os.path.join(infodir, '120bad_ifg.txt')
 
@@ -185,8 +188,6 @@ def run_133(iter):
 
 
 def main():
-    global args, ifgdir, tsadir, infodir, ccdir, ifgdates
-
     start_time = start()
     init_args()
     set_input_output()

@@ -73,7 +73,7 @@ def init_args():
     parser.add_argument('-g', '--unw_dir', default="GEOCml10GACOS", help="folder containing unw input")
     parser.add_argument('-t', '--ts_dir', default="TS_GEOCml10GACOS", help="folder containing time series")
     parser.add_argument('-p', '--percentile', default="80", type=float, help="percentile RMS for thresholding")
-    parser.add_argument('--thresh', dest="thresh", default="0.2", type=float, help="percentile RMS for thresholding")
+    parser.add_argument('--thresh', default="0.2", type=float, help="percentile RMS for thresholding")
     args = parser.parse_args()
 
 
@@ -146,6 +146,7 @@ def iterative_correction():
     run_131(iter)
     resid_threshold_file = os.path.join(infodir, '131resid_2pi{}.txt'.format(int(iter)))
     current_thresh = float(io_lib.get_param_par(resid_threshold_file, 'RMS_thresh'))
+    print("current threshold is {}".format(current_thresh))
 
     # iterative correction
     while current_thresh < args.thresh:

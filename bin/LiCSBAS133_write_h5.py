@@ -281,8 +281,8 @@ def main():
     global ifgdates
 
     # intialise
-    start()
     init_args()
+    start()
 
     # directory settings
     set_input_output()

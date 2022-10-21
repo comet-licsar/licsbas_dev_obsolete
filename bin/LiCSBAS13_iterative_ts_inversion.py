@@ -52,6 +52,10 @@ Outputs in TS_GEOCml*/ :
  - 13resid*/yyyymmdd_yyyymmdd.res.png : Residual for each ifg
  - network/network13*.png : Figures of the network
 
+=====
+Usage
+=====
+LiCSBAS13_iterative_ts_inversion.py [-h] [-f FRAME_DIR] [-g UNW_DIR] [-t TS_DIR] [-p PERCENTILE] [--thresh THRESH] [--starting_iteration N]
 """
 #%% Import
 import os
@@ -213,8 +217,8 @@ def run_133(current_iter):
 
 
 def main():
-    start()
     init_args()
+    start()
     set_input_output()
     get_ifgdates()
     iterative_correction()

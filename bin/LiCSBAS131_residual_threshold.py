@@ -24,8 +24,13 @@ Outputs in TS_GEOCml*/ :
  - info/
    - 131resid_2pi{suffix}.txt        : RMS of the de-peaked residuals as factors of 2pi radian
    - 131RMS_ifg_res_hist{suffix}.png : plot of histogram with a vertical bar indicating threshold
- """
-# - 131ref_de-peaked.txt    : reference point chosen as the pixel with minimum residual
+
+=====
+Usage
+=====
+LiCSBAS131_residual_threshold.py [-h] [-f FRAME_DIR] [-g UNW_DIR] [-t TS_DIR]
+                                        [-p PERCENTILE] [--suffix SUFFIX]
+"""
 
 
 import numpy as np
@@ -145,8 +150,8 @@ def plot_histogram_of_rms_of_depeaked_residuals():
 
 
 def main():
-    start()
     init_args()
+    start()
     set_input_output()
     get_para()
     plot_histogram_of_rms_of_depeaked_residuals()

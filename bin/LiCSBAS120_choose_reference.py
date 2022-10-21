@@ -293,8 +293,8 @@ def plot_networks():
 
 
 def main():
-    start()
     init_args()
+    start()
     set_input_output()
     read_length_width()
     decide_reference_window_size()

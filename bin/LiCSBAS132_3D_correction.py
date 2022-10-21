@@ -21,39 +21,50 @@ This script:
 Input & output files
 ===============
 
-Inputs in GEOCml*/ (--comp_cc_dir):
+Inputs in GEOCml*/ (COMP_CC_DIR):
  - baselines
  - slc.mli.par
-
  - yyyymmdd_yyyymmdd/
    - yyyymmdd_yyyymmdd.conncomp
    - yyyymmdd_yyyymmdd.cc
 
-Inputs in GEOCml*/ (--unw_dir):
+Inputs in GEOCml*/ (UNW_DIR):
  - yyyymmdd_yyyymmdd/
    - yyyymmdd_yyyymmdd.unw
 
 Inputs in TS_GEOCml*/ :
- - 13resid*/ (--resid_dir)
+ - 13resid*/
    - yyyymmdd_yyyymmdd.res
 
  - info/
    - 131resid_2pi*.txt     : RMS residuals per IFG computed in radian and as a factor of 2pi
 
+Outputs in GEOCml*/ (CORRECT_DIR):
+ - yyyymmdd_yyyymmdd/
+   - yyyymmdd_yyyymmdd.unw
+
 Outputs in TS_GEOCml*/ :
- - 13resid*/ (--resid_dir)
+ - 13resid*/
    - good_ifg_no_correction/*png : residuals of uncorrected ifgs
    - bad_ifg_no_correction/*png  : residuals and nearest integers showing why ifgs can't be corrected
    - integer_correction/*png     : ifgs corrected by nearest residual integer (when mode doesn't work)
    - mode_correction/*png        : ifgs corrected by component mode (preferred)
 
  - info/
-   - 132*.txt          : Lists of ifgs corrected by each category (good, bad, integer_corrected, mode_corrected)
+   - 132good_ifg_uncorrected*.txt
+   - 132bad_ifg*.txt
+   - 132corrected_by_nearest_integer_ifg*.txt
+   - 132corrected_by_component_mode_ifg*.txt
 
  - network/
-   - network132*.png   : Figures of the network with/without corrected ifgs, with bad ifgs removed
+   - network132*.png
 
- """
+=====
+Usage
+=====
+LiCSBAS132_3D_correction.py [-h] [-f FRAME_DIR] [-c COMP_CC_DIR] [-g UNW_DIR]
+                                   [-r CORRECT_DIR] [-t TS_DIR] [--thresh THRESH] [--suffix SUFFIX]
+"""
 
 from scipy import stats
 import numpy as np
@@ -385,8 +396,8 @@ def plot_networks():
 
 
 def main():
-    start()
     init_args()
+    start()
     set_input_output()
     get_para()
     correction_decision()

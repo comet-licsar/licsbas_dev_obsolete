@@ -30,7 +30,7 @@ Inputs in TS_GEOCml*/ :
    - vintercept[.png]    : Constant part of linear velocity (c for vt+c) in mm
    - resid_rms[.png]     : RMS of residual in mm
    - n_gap[.png]         : Number of gaps in SB network
-   - n_ifg_noloop[.png]  :  Number of ifgs with no loop
+   - n_ifg_noloop[.png]  : Number of ifgs with no loop
    - maxTlen[.png]       : Max length of continous SB network in year
 
  - info
@@ -72,8 +72,17 @@ import LiCSBAS_loop_lib as loop_lib
 import LiCSBAS_plot_lib as plot_lib
 
 
+class CustomFormatter(argparse.ArgumentDefaultsHelpFormatter, argparse.RawDescriptionHelpFormatter):
+    '''
+    Use a multiple inheritance approach to use features of both classes.
+    The ArgumentDefaultsHelpFormatter class adds argument default values to the usage help message
+    The RawDescriptionHelpFormatter class keeps the indentation and line breaks in the ___doc___
+    '''
+    pass
+
+
 def init_args():
-    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser = argparse.ArgumentParser(description=__doc__, formatter_class=CustomFormatter)
     parser.add_argument('-f', dest='frame_dir', default="./", help="directory of LiCSBAS output")
     parser.add_argument('-c', dest='comp_cc_dir', default="GEOCml10GACOS", help="folder containing connected components and coherence files")
     parser.add_argument('-t', dest='ts_dir', default="TS_GEOCml10GACOS", help="folder containing time series")

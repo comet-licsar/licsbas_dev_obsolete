@@ -94,7 +94,7 @@ def main(argv=None):
         argv = sys.argv
 
     start = time.time()
-    ver="1.3.3"; date=20210402; author="Y. Morishita"
+    ver="1.0"; date=20221020; author="Qi Ou"
     print("\n{} ver{} {} {}".format(os.path.basename(argv[0]), ver, date, author), flush=True)
     print("{} {}".format(os.path.basename(argv[0]), ' '.join(argv[1:])), flush=True)
 
@@ -313,7 +313,7 @@ def main(argv=None):
     ixs_bad_ifgdates = []
 
     ### Header of stats file
-    ifg_statsfile = os.path.join(infodir, '111ifg_stats.txt')
+    ifg_statsfile = os.path.join(infodir, '11ifg_stats.txt')
     fstats = open(ifg_statsfile, 'w')
     print('# Size: {0}({1}x{2}), n_valid: {3}'.format(width*length, width, length, n_unw_valid), file=fstats)
     print('# unw_cov_thre: {0}, coh_thre: {1}, |slope|:30 & r^2: 0.95 => repeated epochs => |slope|:20'.format(unw_cov_thre, coh_thre), file=fstats)

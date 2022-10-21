@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """
+v1.5.4 20221020 Qi Ou, Leeds Uni
 v1.5.3 20211122 Milan Lazecky, Leeds Uni
 v1.5.2 20210311 Yu Morishita, GSI
 
@@ -36,8 +37,8 @@ Inputs in TS_GEOCml*/ :
 [  - slc.mli]
 
 Outputs in TS_GEOCml*/ :
- - cum*.h5             : Cumulative displacement (time-seires) in mm
- - results/
+ - 130cum*.h5             : Cumulative displacement (time-seires) in mm
+ - 130results*/
    - vel*[.png]        : Velocity in mm/yr (positive means LOS decrease; uplift)
    - vintercept*[.png] : Constant part of linear velocity (c for vt+c) in mm
    - resid_rms*[.png]  : RMS of residual in mm
@@ -46,39 +47,19 @@ Outputs in TS_GEOCml*/ :
    - maxTlen*[.png]    : Max length of continous SB network in year
  - info/
    - 13parameters*.txt : List of used parameters
-   - 13used_image*.txt : List of used images
-   - 13resid*.txt      : List of RMS of residual for each ifg
-   - 13ref*.txt[kml]   : Auto-determined stable ref point
-   - 13rms_cum_wrt_med*[.png] : RMS of cum wrt median used for ref selection
- - 13increment*/yyyymmdd_yyyymmdd.increment.png
+   - 130used_image*.txt : List of used images
+   - 130resid*.txt      : List of RMS of residual for each ifg
+   - 130ref*.txt[kml]   : Auto-determined stable ref point
+   - 130rms_cum_wrt_med*[.png] : RMS of cum wrt median used for ref selection
+ - 130increment*/yyyymmdd_yyyymmdd.increment.png
      : Comparison between unw and inverted incremental displacement
- - 13resid*/yyyymmdd_yyyymmdd.res.png : Residual for each ifg
+ - 130resid*/yyyymmdd_yyyymmdd.res.png : Residual for each ifg
 
 =====
 Usage
 =====
-LiCSBAS13_sb_inv.py -d ifgdir [-t tsadir] [--inv_alg LS|WLS] [--mem_size float] [--gamma float] [--n_para int] [--n_unw_r_thre float] [--keep_incfile] [--gpu] [--fast] [--only_sb] [--nopngs]
+LiCSBAS130_sb_inv.py -d ifgdir [-t tsadir] [--inv_alg LS|WLS] [--mem_size float] [--gamma float] [--n_para int] [--n_unw_r_thre float] [--keep_incfile] [--gpu] [--fast] [--only_sb] [--nopngs]
 
- -d  Path to the GEOCml*Corrected dir containing refined stack of unw data
- -t  Path to the output TS_GEOCml* dir.
- --inv_alg    Inversion algolism (Default: LS)
-   LS :       NSBAS Least Square with no weight
-   WLS:       NSBAS Weighted Least Square (not well tested)
-              Weight (variance) is calculated by (1-coh**2)/(2*coh**2)
- --mem_size   Max memory size for each patch in MB. (Default: 8000)
- --gamma      Gamma value for NSBAS inversion (Default: 0.0001)
- --n_para     Number of parallel processing (Default: # of usable CPU)
- --n_unw_r_thre
-     Threshold of n_unw (number of used unwrap data)
-     (Note this value is ratio to the number of images; i.e., 1.5*n_im)
-     Larger number (e.g. 2.5) makes processing faster but result sparser.
-     (Default: 1 and 0.5 for C- and L-band, respectively)
- --keep_incfile
-     Not remove inc and resid files (Default: remove them)
- --gpu        Use GPU (Need cupy module)
- --fast       Use more economic NSBAS computation (should be faster and less demanding, may bring errors in points with many gaps)
- --only_sb    Perform only SB processing (skipping points with NaNs)
- --nopngs     Avoid generating some (unnecessary) PNG previews of increment residuals etc.
 """
 #%% Change log
 '''
@@ -148,22 +129,50 @@ import LiCSBAS_plot_lib as plot_lib
 import argparse
 
 
+class CustomFormatter(argparse.ArgumentDefaultsHelpFormatter, argparse.RawDescriptionHelpFormatter):
+    '''
+    Use a multiple inheritance approach to use features of both classes.
+    The ArgumentDefaultsHelpFormatter class adds argument default values to the usage help message
+    The RawDescriptionHelpFormatter class keeps the indentation and line breaks in the ___doc___
+    '''
+    pass
+
+
 class Usage(Exception):
     """Usage context manager"""
     def __init__(self, msg):
         self.msg = msg
 
 
-def main(argv=None):
+def init_args():
+    # read inputs
+    parser = argparse.ArgumentParser(description=__doc__, formatter_class=CustomFormatter)
+    parser.add_argument('-f', dest='frame_dir', default="./", help="directory of LiCSBAS output of a particular frame")
+    parser.add_argument('-c', dest='cc_dir', default="GEOCml10GACOS", help="folder containing connected cc files")
+    parser.add_argument('-d', dest='unw_dir', default="GEOCml10GACOS", help="folder containing unw input to be corrected")
+    parser.add_argument('-t', dest='ts_dir', default="TS_GEOCml10GACOS", help="folder containing time series")
+    parser.add_argument('-m', dest='memory_size', default=8000, type=float, help="Max memory size for each patch in MB. (Default: 8000)")
+    parser.add_argument('-g', dest='gamma', default=0.0001, type=float, help="Gamma value for NSBAS inversion (Default: 0.0001)")
+    parser.add_argument('--suffix', default="", type=str, help="suffix of the output")
+    parser.add_argument('--inv_alg', default="LS", help="Inversion algolism \n    LS :       NSBAS Least Square with no weight\n   WLS:       NSBAS Weighted Least Square (not well tested)\n              Weight (variance) is calculated by (1-coh**2)/(2*coh**2)")
+    parser.add_argument('--n_unw_r_thre', type=float, help="Threshold of n_unw (number of used unwrap data) \n (Note this value is ratio to the number of images; i.e., 1.5*n_im) \n Larger number (e.g. 2.5) makes processing faster but result sparser. \n (Default: 1 and 0.5 for C- and L-band, respectively)")
+    parser.add_argument('--n_para', type=int, help="Number of parallel processing (Default: # of usable CPU)")
+    parser.add_argument('--keep_incfile', default=False, action='store_true', help="Not remove inc and resid files (Default: remove them)")
+    parser.add_argument('--nopngs', default=False, action='store_true', help="Avoid generating some (unnecessary) PNG previews of increment residuals etc.")
+    parser.add_argument('--gpu', default=False, action='store_true', help="Use GPU (Need cupy module)")
+    parser.add_argument('--fast', default=False, action='store_true', help="Use more economic NSBAS computation (should be faster and less demanding, may bring errors in points with many gaps)")
+    parser.add_argument('--only_sb', default=False, action='store_true', help="Perform only SB processing (skipping points with NaNs)")
+    args = parser.parse_args()
 
-    #%% Check argv
-    if argv == None:
-        argv = sys.argv
+    return args
+
+
+def main():
 
     start = time.time()
     ver="1.0"; date=20220929; author="Q. Ou"
-    print("\n{} ver{} {} {}".format(os.path.basename(argv[0]), ver, date, author), flush=True)
-    print("{} {}".format(os.path.basename(argv[0]), ' '.join(argv[1:])), flush=True)
+    print("\n{} ver{} {} {}".format(os.path.basename(sys.argv[0]), ver, date, author), flush=True)
+    print("{} {}".format(os.path.basename(sys.argv[0]), ' '.join(sys.argv[1:])), flush=True)
 
     ## For parallel processing
     global n_para_gap, G, Aloop, unwpatch, imdates, incdir, ccdir, ifgdir, length, width,\
@@ -186,26 +195,7 @@ def main(argv=None):
     q = multi.get_context('fork')
     compress = 'gzip'
 
-    # read inputs
-    parser = argparse.ArgumentParser(description="Detect coregistration error")
-    parser.add_argument('-f', "--frame_dir", default="./", help="directory of LiCSBAS output of a particular frame")
-    parser.add_argument('-c', '--cc_dir', default="GEOCml10GACOS", help="folder containing connected cc files")
-    parser.add_argument('-d', '--unw_dir', default="GEOCml10GACOS", help="folder containing unw input to be corrected")
-    parser.add_argument('-t', '--ts_dir', default="TS_GEOCml10GACOS", help="folder containing time series")
-    parser.add_argument('-m', '--memory_size', default=8000, type=float, help="Max memory size for each patch in MB. (Default: 8000)")
-    parser.add_argument('-g', '--gamma', default=0.0001, type=float, help="Gamma value for NSBAS inversion (Default: 0.0001)")
-    parser.add_argument('--suffix', default="", type=str, help="suffix of the output")
-    parser.add_argument('--inv_alg', default="LS", help="Inversion algolism (Default: LS) \n    LS :       NSBAS Least Square with no weight\n   WLS:       NSBAS Weighted Least Square (not well tested)\n              Weight (variance) is calculated by (1-coh**2)/(2*coh**2)")
-    parser.add_argument('--n_unw_r_thre', type=float, help="Threshold of n_unw (number of used unwrap data) \n (Note this value is ratio to the number of images; i.e., 1.5*n_im) \n Larger number (e.g. 2.5) makes processing faster but result sparser. \n (Default: 1 and 0.5 for C- and L-band, respectively)")
-    parser.add_argument('--n_para', type=int, help="Number of parallel processing (Default: # of usable CPU)")
-    parser.add_argument('--keep_incfile', default=False, action='store_true', help="Not remove inc and resid files (Default: remove them)")
-    parser.add_argument('--nopngs', default=False, action='store_true', help="Avoid generating some (unnecessary) PNG previews of increment residuals etc.")
-    parser.add_argument('--gpu', default=False, action='store_true', help="Use GPU (Need cupy module)")
-    parser.add_argument('--fast', default=False, action='store_true', help="Use more economic NSBAS computation (should be faster and less demanding, may bring errors in points with many gaps)")
-    parser.add_argument('--only_sb', default=False, action='store_true', help="Perform only SB processing (skipping points with NaNs)")
-    # args = parser.parse_args(argv)
-    args = parser.parse_args()
-
+    args = init_args()
 
     if args.gpu:
         print("\nGPU option is activated. Need cupy module.\n")

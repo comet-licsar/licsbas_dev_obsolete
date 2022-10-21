@@ -82,55 +82,58 @@ class CustomFormatter(argparse.ArgumentDefaultsHelpFormatter, argparse.RawDescri
 
 
 def init_args():
+    global args
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=CustomFormatter)
     parser.add_argument('-f', dest='frame_dir', default="./", help="directory of LiCSBAS output")
     parser.add_argument('-c', dest='comp_cc_dir', default="GEOCml10GACOS", help="folder containing connected components and coherence files")
     parser.add_argument('-t', dest='ts_dir', default="TS_GEOCml10GACOS", help="folder containing time series")
     parser.add_argument('--suffix', default="", type=str, help="suffix of the final iteration")
     args = parser.parse_args()
-    return args
+
 
 
 def start():
+    global start_time
     # intialise and print info on screen
-    start = time.time()
+    start_time = time.time()
     ver="1.0"; date=20221020; author="Qi Ou"
     print("\n{} ver{} {} {}".format(os.path.basename(sys.argv[0]), ver, date, author), flush=True)
     print("{} {}".format(os.path.basename(sys.argv[0]), ' '.join(sys.argv[1:])), flush=True)
-    return start
 
 
-def finish(start_time):
+def finish():
     #%% Finish
     elapsed_time = time.time() - start_time
     hour = int(elapsed_time/3600)
     minite = int(np.mod((elapsed_time/60),60))
     sec = int(np.mod(elapsed_time,60))
     print("\nElapsed time: {0:02}h {1:02}m {2:02}s".format(hour,minite,sec))
-    print('\nLiCSBAS13_iterative_ts_inversion.py Successfully finished!!\n')
+    print("\n{} {}".format(os.path.basename(sys.argv[0]), ' '.join(sys.argv[1:])), flush=True)
     print('Output directory: {}\n'.format(os.path.relpath(tsadir)))
 
 
-def set_input_output(args):
-    global geoc_dir, ccdir, ifgdir, tsadir, infodir, last_result_dir, resultsdir, last_cumh5file, cumh5file
+def set_input_output():
+    global ccdir, ifgdir, tsadir, infodir, last_result_dir, resultsdir, last_cumh5file, cumh5file
 
-    # define input directories
+    # define input directories and file
     ccdir = os.path.abspath(os.path.join(args.frame_dir, args.comp_cc_dir))
     ifgdir = os.path.abspath(os.path.join(args.frame_dir, args.comp_cc_dir+args.suffix))
     tsadir = os.path.abspath(os.path.join(args.frame_dir, args.ts_dir))
     infodir = os.path.join(tsadir, 'info')
     last_result_dir = os.path.join(tsadir, '130results{}'.format(args.suffix))
-    resultsdir = os.path.join(tsadir, 'results')
     last_cumh5file = os.path.join(tsadir, '130cum{}.h5'.format(args.suffix))
+
+    # define output directory and file
+    resultsdir = os.path.join(tsadir, 'results')
     cumh5file = os.path.join(tsadir, 'cum.h5')
 
 
 def read_length_width():
+    global length, width
     # read ifg size
     mlipar = os.path.join(ccdir, 'slc.mli.par')
     width = int(io_lib.get_param_par(mlipar, 'range_samples'))
     length = int(io_lib.get_param_par(mlipar, 'azimuth_lines'))
-    return length, width
 
 
 def calc_n_unw():
@@ -246,7 +249,7 @@ def calc_n_loop_error(n_unw):
     plot_lib.make_im_png(n_loop_err, n_loop_err_file+'.png', cmap_noise_r, title)
 
 
-def write_h5(cumh5file):
+def write_h5():
     # Write additional results to h5
     print('\nWriting to HDF5 file...')
     cumh5 = h5.File(cumh5file, 'w')
@@ -275,15 +278,15 @@ def write_h5(cumh5file):
 
 
 def main():
-    global length, width, ifgdates
+    global ifgdates
 
     # intialise
-    start_time = start()
-    args = init_args()
+    start()
+    init_args()
 
     # directory settings
-    set_input_output(args)
-    length, width = read_length_width()
+    set_input_output()
+    read_length_width()
     ifgdates = tools_lib.get_ifgdates(ifgdir)
 
     # copy everything from last iter to final
@@ -296,10 +299,10 @@ def main():
     calc_n_loop_error(n_unw)
 
     # compile all results to h5
-    write_h5(cumh5file)
+    write_h5()
 
     # report finish
-    finish(start_time)
+    finish()
 
 
 if __name__ == '__main__':

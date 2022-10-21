@@ -1,5 +1,43 @@
 #!/usr/bin/env python3
+"""
+========
+Overview
+========
+This script:
+ - calculates the block sum of unw pixels
+ - calculates the block sum of coherence
+ - calculates the block sum of connected component size
+ - calculates the block std of height
+ - combine and normalise a proxy [0-1] of suitability of reference window
+ - choose amongst the selected windows (above threshold) the nearest to desired reference location
+ - discard ifgs with all nan values in the chosen reference window
 
+===============
+Input & output files
+===============
+
+Inputs in GEOCml*/:
+ - slc.mli.par
+ - hgt
+ - yyyymmdd_yyyymmdd/
+   - yyyymmdd_yyyymmdd.cc
+   - yyyymmdd_yyyymmdd.conncomp
+   - yyyymmdd_yyyymmdd.unw
+
+Outputs in TS_GEOCml*/ :
+ - info/
+  - 120ref.txt        : refx1:refx2/refy1:refy2
+  - 120bad_ifg.txt    : list of ifgs with all nan values within the chosen reference window
+  - 120_reference.png : proxy plots
+
+ - networks/
+  - network120*png
+
+=====
+Usage
+=====
+LiCSBAS120_choose_reference.py [-h] [-f FRAME_DIR] [-g UNW_DIR] [-t TS_DIR] [-w WIN] [-r [0-1]] [--w_unw [0-1]] [--w_coh [0-1]] [--w_con [0-1]] [--w_hgt [0-1]] [--refx [0-1]] [--refy [0-1]]
+"""
 import numpy as np
 import matplotlib.pyplot as plt
 import os
@@ -17,6 +55,7 @@ def block_sum(array, k):
                              np.arange(0, array.shape[1], k), axis=1)
     return result
 
+
 class CustomFormatter(argparse.ArgumentDefaultsHelpFormatter, argparse.RawDescriptionHelpFormatter):
     '''
     Use a multiple inheritance approach to use features of both classes.
@@ -24,6 +63,7 @@ class CustomFormatter(argparse.ArgumentDefaultsHelpFormatter, argparse.RawDescri
     The RawDescriptionHelpFormatter class keeps the indentation and line breaks in the ___doc___
     '''
     pass
+
 
 def init_args():
     global args
@@ -49,7 +89,6 @@ def start():
     ver="1.0"; date=20221020; author="Qi Ou"
     print("\n{} ver{} {} {}".format(os.path.basename(sys.argv[0]), ver, date, author), flush=True)
     print("{} {}".format(os.path.basename(sys.argv[0]), ' '.join(sys.argv[1:])), flush=True)
-
 
 
 def finish():
@@ -79,6 +118,7 @@ def set_input_output():
     noref_ifgfile = os.path.join(infodir, '120bad_ifg.txt')
     reference_png = os.path.join(infodir, "120_reference.png")
 
+
 def read_length_width():
     global length, width
 
@@ -88,6 +128,7 @@ def read_length_width():
     length = int(io_lib.get_param_par(mlipar, 'azimuth_lines'))
     print("\nSize         : {} x {}".format(width, length), flush=True)
 
+
 def decide_reference_window_size():
     global window_size
     ### Get resolution
@@ -95,6 +136,7 @@ def decide_reference_window_size():
     lattitude_resolution = float(io_lib.get_param_par(dempar, 'post_lat'))
     window_size = int(abs(args.win / 110 / lattitude_resolution) + 0.5)   # 110 km per degree latitude
     print("\nWindow size : ", window_size)
+
 
 def get_ifgdates():
     global ifgdates
@@ -109,6 +151,7 @@ def get_ifgdates():
     ### Remove bad ifgs and images from list
     ifgdates = list(set(ifgdates)-set(bad_ifg11))
     ifgdates.sort()
+
 
 def calc_block_sum_of_unw_coh_component_size():
     global block_unw, block_coh, block_con
@@ -160,6 +203,7 @@ def calc_height_std():
     hgt_demean_square = hgt_demean ** 2
     block_rms_hgt = np.sqrt( block_sum(hgt_demean_square, window_size) / (window_size ** 2) )
 
+
 def clip_normalise_combine_indices():
     global block_proxy
     ### turn 0 to nan
@@ -184,6 +228,7 @@ def clip_normalise_combine_indices():
     block_proxy = args.w_unw * block_unw + args.w_coh * block_coh + args.w_con * block_con - args.w_hgt * block_rms_hgt
     block_proxy = (block_proxy - np.nanmin(block_proxy)) / (np.nanmax(block_proxy) - np.nanmin(block_proxy))
 
+
 def closest_to_ref_center():
     global desired_ref_center_x, desired_ref_center_y, refx, refy
     ## choose distance closer to center
@@ -196,6 +241,7 @@ def closest_to_ref_center():
     refy = refys[index_nearest_to_center][0]
     refx = refxs[index_nearest_to_center][0]
     print("Reference nearest to center: refy={}, refx={}".format(refy, refx))
+
 
 def plot_ref_proxies():
     ### load example unw for plotting in block resolution
@@ -231,6 +277,7 @@ def plot_ref_proxies():
 
     fig.savefig(reference_png, dpi=300, bbox_inches='tight')
 
+
 def save_reference_to_file():
     global refx1, refx2, refy1, refy2
 
@@ -242,6 +289,7 @@ def save_reference_to_file():
     refsfile = os.path.join(infodir, '120ref.txt')
     with open(refsfile, 'w') as f:
         print('{}:{}/{}:{}'.format(refx1, refx2, refy1, refy2), file=f)
+
 
 def discard_ifg_with_all_nans_at_ref():
     global noref_ifg
@@ -293,8 +341,8 @@ def plot_networks():
 
 
 def main():
-    init_args()
     start()
+    init_args()
     set_input_output()
     read_length_width()
     decide_reference_window_size()

@@ -116,7 +116,7 @@ if __name__ == "__main__":
     sec = int(np.mod(elapsed_time, 60))
     print("\nElapsed time: {0:02}h {1:02}m {2:02}s".format(hour, minite, sec))
 
-    print('\n{} Successfully finished!!\n'.format(os.path.basename(argv[0])))
+    print('\n{} Successfully finished!!\n'.format(os.path.basename(sys.argv[0])))
     print('Output directory: {}\n'.format(os.path.relpath(tsadir)))
 
         # # calculate rms de-peaked residuals

@@ -65,8 +65,6 @@ import sys
 import LiCSBAS_io_lib as io_lib
 import LiCSBAS_tools_lib as tools_lib
 
-global args, ifgdir, tsadir, infodir, ccdir, ifgdates
-
 
 def init_args():
     parser = argparse.ArgumentParser(description="Detect coregistration error")
@@ -187,6 +185,8 @@ def run_133(iter):
 
 
 def main():
+    global args, ifgdir, tsadir, infodir, ccdir, ifgdates
+
     start_time = start()
     init_args()
     set_input_output()

@@ -1,7 +1,5 @@
 #!/usr/bin/env python3
 """
-v1.0 20220928 Qi Ou, Leeds Uni
-
 ========
 Overview
 ========
@@ -49,8 +47,13 @@ Outputs in TS_GEOCml*/ :
 =====
 Usage
 =====
+LiCSBAS133_write_h5.py [-h] [-f FRAME_DIR] [-c COMP_CC_DIR] [-t TS_DIR] [--suffix SUFFIX]
 """
 
+#%% Change log
+'''
+v1.0 20220928 Qi Ou, Leeds Uni
+'''
 
 #%% Import
 import os

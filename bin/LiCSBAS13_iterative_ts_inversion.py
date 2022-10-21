@@ -67,6 +67,7 @@ import LiCSBAS_tools_lib as tools_lib
 
 
 def init_args():
+    global args
     parser = argparse.ArgumentParser(description="Detect coregistration error")
     parser.add_argument('-f', "--frame_dir", default="./", help="directory of LiCSBAS output of a particular frame")
     parser.add_argument('-g', '--unw_dir', default="GEOCml10GACOS", help="folder containing unw input")
@@ -74,7 +75,6 @@ def init_args():
     parser.add_argument('-p', '--percentile', default="80", type=float, help="percentile RMS for thresholding")
     parser.add_argument('--thresh', dest="thresh", default="0.2", type=float, help="percentile RMS for thresholding")
     args = parser.parse_args()
-    global args
 
 
 def start():

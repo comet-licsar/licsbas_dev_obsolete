@@ -82,7 +82,9 @@ def calc_n_unw():
         unw[unw == 0] = np.nan # Fill 0 with nan
         n_unw += ~np.isnan(unw) # Summing number of unnan unw
 
+
     ### Write to file
+    n_unw[n_unw == 0] = np.nan
     n_unwfile = os.path.join(resultsdir, 'n_unw')
     np.float32(n_unw).tofile(n_unwfile)
 
@@ -93,6 +95,7 @@ def calc_n_unw():
     n_im = len(imdates)
     plot_lib.make_im_png(n_unw, n_unwfile+'.png', cmap_noise, title, n_im)
 
+    return n_unw
 
 def calc_coh_avg():
     # calc n_unw and avg_coh of final data set
@@ -123,7 +126,7 @@ def calc_coh_avg():
     plot_lib.make_im_png(coh_avg, coh_avgfile+'.png', cmap_noise, title)
 
 
-def calc_n_loop_error():
+def calc_n_loop_error(n_unw):
     ''' same as loop_closure_4th in LiCSBAS12_loop_closure.py '''
     print('Compute n_loop_error and n_ifg_noloop...', flush=True)
 
@@ -170,6 +173,7 @@ def calc_n_loop_error():
         n_loop_err = n_loop_err + ~is_ok  # suspected unw error
 
     # write to file
+    n_loop_err[n_unw == 0] = np.nan
     n_loop_err = np.array(n_loop_err, dtype=np.int16)
     n_loop_err_file = os.path.join(resultsdir, 'n_loop_err')
     np.float32(n_loop_err).tofile(n_loop_err_file)
@@ -185,7 +189,7 @@ def write_h5(cumh5file):
     print('\nWriting to HDF5 file...')
     cumh5 = h5.File(cumh5file, 'w')
     compress = 'gzip'
-    indices = ['coh_avg', 'hgt', 'n_loop_err', 'n_unw', 'slc.mli']
+    indices = ['coh_avg', 'hgt', 'n_loop_err', 'n_unw'] #, 'slc.mli']
 
     for index in indices:
         file = os.path.join(resultsdir, index)
@@ -224,9 +228,9 @@ def main():
     shutil.copytree(last_result_dir, resultsdir, dirs_exist_ok=True)
 
     # calc quality stats based on the final corrected unw
-    calc_n_unw()
+    n_unw = calc_n_unw()
     calc_coh_avg()
-    calc_n_loop_error()
+    calc_n_loop_error(n_unw)
 
     # compile all results to h5
     write_h5(cumh5file)

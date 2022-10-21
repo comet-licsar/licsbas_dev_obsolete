@@ -63,19 +63,11 @@ import LiCSBAS_plot_lib as plot_lib
 
 
 def init_args():
-    # parser = argparse.ArgumentParser(description="Assemble all results into cum.h5")
-    # parser.add_argument('-f', "--frame_dir", default="./", help="directory of LiCSBAS output")
-    # parser.add_argument('-c', '--comp_cc_dir', default="GEOCml10GACOS", help="folder containing connected components and coherence files")
-    # parser.add_argument('-t', '--ts_dir', default="TS_GEOCml10GACOS", help="folder containing time series")
-    # parser.add_argument('--suffix', default="", type=str, help="suffix of the last iteration")
-    # args = parser.parse_args()
-    # return args
-
-    parser = argparse.ArgumentParser(description="Assemble all results into cum.h5")
+    parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('-f', dest='frame_dir', default="./", help="directory of LiCSBAS output")
     parser.add_argument('-c', dest='comp_cc_dir', default="GEOCml10GACOS", help="folder containing connected components and coherence files")
     parser.add_argument('-t', dest='ts_dir', default="TS_GEOCml10GACOS", help="folder containing time series")
-    parser.add_argument('--suffix', default="", type=str, help="suffix of the last iteration")
+    parser.add_argument('--suffix', default="", type=str, help="suffix of the final iteration")
     args = parser.parse_args()
     return args
 

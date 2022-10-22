@@ -74,6 +74,7 @@ import glob
 import argparse
 import sys
 import time
+import re
 from pathlib import Path
 #import cmcrameri as cm
 from matplotlib import cm
@@ -182,10 +183,12 @@ def get_para():
     print("Correction threshold = {:2f}".format(thresh))
 
     # read reference for plotting purpose
-    with open(os.path.join(infodir, '120ref.txt'), 'r') as f:
-        for line in f.readlines():
-            ref_x = int(line.split(":")[0])
-            ref_y = int(line.split("/")[1].split(":")[0])
+    reffile = os.path.join(infodir, '120ref.txt')
+    with open(reffile, "r") as f:
+        refarea = f.read().split()[0]  # str, x1/x2/y1/y2
+    refx1, refx2, refy1, refy2 = [int(s) for s in re.split('[:/]', refarea)]
+    ref_x = int((refx1 + refx2) / 2)
+    ref_y = int((refy1 + refy2) / 2)
 
 
 def correction_decision():

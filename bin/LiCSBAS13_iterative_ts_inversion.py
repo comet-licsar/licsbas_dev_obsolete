@@ -164,7 +164,7 @@ def starting_iteration(current_iter, current_iter_unwdir):
         print("current threshold is {}".format(current_thresh))
         if np.isnan(current_thresh):
             print("NaN threshold is not allowed, removing and recalculating...")
-            os.remove(current_thresh)
+            os.remove(resid_threshold_file)
             start_with_130_or_131(current_iter, current_iter_unwdir, resid_threshold_file)
         else:
             print("Start iterative correction...")

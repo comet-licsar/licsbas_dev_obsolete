@@ -158,24 +158,26 @@ def starting_iteration(current_iter, current_iter_unwdir):
     # check if residual stats has been calculated
     resid_threshold_file = os.path.join(infodir, '131resid_2pi{}.txt'.format(int(current_iter)))
     if not os.path.exists(resid_threshold_file):
-        start_with_130_or_131(current_iter, current_iter_unwdir, resid_threshold_file)
+        start_with_130_or_131(current_iter, current_iter_unwdir)
     else:
         current_thresh = float(io_lib.get_param_par(resid_threshold_file, 'RMS_thresh'))
         print("current threshold is {}".format(current_thresh))
         if np.isnan(current_thresh):
             print("NaN threshold is not allowed, removing and recalculating...")
             os.remove(resid_threshold_file)
-            start_with_130_or_131(current_iter, current_iter_unwdir, resid_threshold_file)
+            start_with_130_or_131(current_iter, current_iter_unwdir)
         else:
             print("Start iterative correction...")
     return current_thresh
 
 
-def start_with_130_or_131(current_iter, current_iter_unwdir, resid_threshold_file):
+def start_with_130_or_131(current_iter, current_iter_unwdir):
     '''Decide if files are available for running run_130, if not run_131'''
     if glob.glob(os.path.join(tsadir, "130resid{}".format(int(current_iter)), '*.res')):
+        print('Time series exists, calculating 131resid_2pi{}.txt...'.format(int(current_iter)))
         run_131(current_iter)
     elif glob.glob(current_iter_unwdir + "/*/*.unw"):
+        print('Starting from time series inversion iteration {}'.format(int(current_iter)))
         run_130(current_iter_unwdir, current_iter)
         run_131(current_iter)
     else:

@@ -86,7 +86,7 @@ def init_args():
     parser.add_argument('-t', dest='ts_dir', default="TS_GEOCml10GACOS", help="folder containing time series")
     parser.add_argument('-p', dest='percentile', default=80, type=float, help="percentile RMS for thresholding")
     parser.add_argument('--thresh', default=0.2, type=float, help="target RMS used to stop iteration")
-    parser.add_argument('--starting_iteration', metavar='N', default=1, type=int, help="starting iteration for resuming crashed iteration (if crashed in iter 3, should restart in iter 2. The code will first check the correction threshold of iter 2 before deciding if it should go into iter 3)")
+    parser.add_argument('--starting_iteration', metavar='N', default=1, type=int, help="an iteration starts with time series inversion and ends with unwrapping correction")
     args = parser.parse_args()
 
 
@@ -153,33 +153,50 @@ def first_iteration(iter_unw_path):
         os.link(unwfile, linkfile)
 
 
+def starting_iteration(current_iter, current_iter_unwdir):
+    ''' Obtain current_thresh before iterative correction, if not exists, try to calculate it'''
+    # check if residual stats has been calculated
+    resid_threshold_file = os.path.join(infodir, '131resid_2pi{}.txt'.format(int(current_iter)))
+    if not os.path.exists(resid_threshold_file):
+        start_with_130_or_131(current_iter, current_iter_unwdir, resid_threshold_file)
+    else:
+        current_thresh = float(io_lib.get_param_par(resid_threshold_file, 'RMS_thresh'))
+        print("current threshold is {}".format(current_thresh))
+        if np.isnan(current_thresh):
+            print("NaN threshold is not allowed, removing and recalculating...")
+            os.remove(current_thresh)
+            start_with_130_or_131(current_iter, current_iter_unwdir, resid_threshold_file)
+        else:
+            print("Start iterative correction...")
+    return current_thresh
+
+
+def start_with_130_or_131(current_iter, current_iter_unwdir, resid_threshold_file):
+    '''Decide if files are available for running run_130, if not run_131'''
+    if glob.glob(os.path.join(tsadir, "130resid{}".format(int(current_iter)), '*.res')):
+        run_131(current_iter)
+    elif glob.glob(current_iter_unwdir + "*/*.unw"):
+        run_130(current_iter_unwdir, current_iter)
+        run_131(current_iter)
+    else:
+        raise FileNotFoundError(
+            "None of the following exists:\nRes Stats:{} \nResiduals: TS*/130resid{}/.res \nIFGs: {}/*/*.unw  \nStarting from an earlier iteration!".format(
+                resid_threshold_file, int(current_iter), current_iter_unwdir))
+
+
 def iterative_correction():
     # define first iteration output dir
     current_iter = args.starting_iteration # default 1
     current_iter_unwdir = ccdir+"{}".format(int(current_iter))
     current_iter_unw_abspath = os.path.abspath(os.path.join(args.frame_dir, current_iter_unwdir))  # to read .unw
 
+    # check if unw directory exists:
     if current_iter == 1:  # set up unw dir without 11bad and 12bad
         first_iteration(current_iter_unw_abspath)
 
-    if not os.path.exists(current_iter_unw_abspath):
-        raise FileNotFoundError("Check if {} exists".format(current_iter_unw_abspath))
+    current_thresh = starting_iteration(current_iter, current_iter_unwdir)
 
-    # check if time series inversion has been done
-    cum5file = os.path.join(tsadir, '130cum{}.h5'.format(int(current_iter)))
-    if not os.path.exists(cum5file):
-        run_130(current_iter_unwdir, current_iter)
-
-    # check if residual stats has been calculated
-    resid_threshold_file = os.path.join(infodir, '131resid_2pi{}.txt'.format(int(current_iter)))
-    if not os.path.exists(resid_threshold_file):
-        run_131(current_iter)
-
-    # check current_thresh against target thresh to see if correction is needed
-    current_thresh = float(io_lib.get_param_par(resid_threshold_file, 'RMS_thresh'))
-    print("current threshold is {}".format(current_thresh))
-
-    # iterative correction
+    # iterative correction: check current_thresh against target thresh to see if correction is needed
     while current_thresh > args.thresh:
         print("Iteration {}".format(int(current_iter)))
         print("Correction threshold = {:2f}, above target {:2f}, keep correcting...".format(current_thresh, args.thresh))

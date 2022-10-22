@@ -175,13 +175,13 @@ def start_with_130_or_131(current_iter, current_iter_unwdir, resid_threshold_fil
     '''Decide if files are available for running run_130, if not run_131'''
     if glob.glob(os.path.join(tsadir, "130resid{}".format(int(current_iter)), '*.res')):
         run_131(current_iter)
-    elif glob.glob(current_iter_unwdir + "*/*.unw"):
+    elif glob.glob(current_iter_unwdir + "/*/*.unw"):
         run_130(current_iter_unwdir, current_iter)
         run_131(current_iter)
     else:
         raise FileNotFoundError(
-            "None of the following exists:\nRes Stats:{} \nResiduals: TS*/130resid{}/.res \nIFGs: {}/*/*.unw  \nStarting from an earlier iteration!".format(
-                resid_threshold_file, int(current_iter), current_iter_unwdir))
+            "None of the following exists:\nRes Stats:TS_*/info/131resid_2pi{}.txt \nResiduals: TS_*/130resid{}/*.res \nIFGs: {}/*/*.unw  \nStarting from an earlier iteration!".format(
+                int(current_iter), int(current_iter), current_iter_unwdir))
 
 
 def iterative_correction():

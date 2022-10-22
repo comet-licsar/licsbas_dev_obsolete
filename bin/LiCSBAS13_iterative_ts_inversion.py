@@ -139,6 +139,7 @@ def get_ifgdates():
 
 
 def first_iteration(iter_unw_path):
+    ''' Only link "good" ifgs defined by ifgdates to the folder'''
     # remove existing GEOCml10GACOS1 directory
     if os.path.exists(iter_unw_path): shutil.rmtree(iter_unw_path)
     Path(iter_unw_path).mkdir(parents=True, exist_ok=True)
@@ -160,6 +161,9 @@ def iterative_correction():
 
     if current_iter == 1:  # set up unw dir without 11bad and 12bad
         first_iteration(current_iter_unw_abspath)
+
+    if not os.path.exists(current_iter_unw_abspath):
+        raise FileNotFoundError("Check if {} exists".format(current_iter_unw_abspath))
 
     # check if time series inversion has been done
     cum5file = os.path.join(tsadir, '130cum{}.h5'.format(int(current_iter)))

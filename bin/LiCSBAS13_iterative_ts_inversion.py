@@ -177,6 +177,7 @@ def iterative_correction():
         # define next iteration
         next_iter = current_iter + 1
         next_iter_unwdir = ccdir + "{}".format(int(next_iter))
+        current_iter_unwdir = ccdir + "{}".format(int(current_iter))
 
         # 132=correction; 130=inversion; 131=stats
         run_132(current_iter_unwdir, next_iter_unwdir, current_iter)

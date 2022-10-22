@@ -60,6 +60,7 @@ import os
 import time
 import shutil
 import numpy as np
+import glob
 import h5py as h5
 from pathlib import Path
 import argparse
@@ -160,13 +161,17 @@ def iterative_correction():
     if current_iter == 1:  # set up unw dir without 11bad and 12bad
         first_iteration(current_iter_unw_abspath)
 
-    # check if current threshold is determined to decide where to start the iteration.
+    # check if time series inversion has been done
+    cum5file = os.path.join(tsadir, '130cum{}.h5'.format(int(current_iter)))
+    if not os.path.exists(cum5file):
+        run_130(current_iter_unwdir, current_iter)
+
+    # check if residual stats has been calculated
     resid_threshold_file = os.path.join(infodir, '131resid_2pi{}.txt'.format(int(current_iter)))
     if not os.path.exists(resid_threshold_file):
-        run_130(current_iter_unwdir, current_iter)
         run_131(current_iter)
 
-    # starting current_thresh to compare with target thresh
+    # check current_thresh against target thresh to see if correction is needed
     current_thresh = float(io_lib.get_param_par(resid_threshold_file, 'RMS_thresh'))
     print("current threshold is {}".format(current_thresh))
 

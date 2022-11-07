@@ -427,7 +427,7 @@ def main(argv=None):
         refnearyx = np.round(refnearyx/2).astype(np.int16)
     # get pixels with low loop errors, i.e. within 20% percentile - or should we do lower?
     # 2022-10-12: instead of loop phase rms, choose pixel with highest coherence around given point
-    realphrms = loop_ph_rms_points_masked
+    #realphrms = loop_ph_rms_points_masked
     # calculating avg_coh here already
     print('calculating average coherence (to be used also for ref point selection)')
     coh_avg = np.zeros((length, width), dtype=np.float32)
@@ -457,29 +457,30 @@ def main(argv=None):
     #
     # for convenience (debug, to be checked if works ok), changing this to 1/coh
     print('Oct 2022 update: selecting ref point based on avg coh (and all in unw) instead of loop phase closure min (as it depends on prelim ref area/mean of scene)')
-    loop_ph_rms_points_masked = (1/coh_avg)*mask1*mask2
-    loop_ph_rms_points_masked[loop_ph_rms_points_masked==0] = np.nan
+    coh_ratio_masked = (1/coh_avg)*mask1*mask2
+    coh_ratio_masked[coh_ratio_masked==0] = np.nan
     percentile = 20
-    percthres = np.nanpercentile(loop_ph_rms_points_masked,percentile)
-    refyxs = np.where(loop_ph_rms_points_masked<percthres)
+    percthres = np.nanpercentile(coh_ratio_masked,percentile)
+    refyxs = np.where(coh_ratio_masked<percthres)
     if len(refyxs[0]) < 10:
         #decrease the limit
         percentile = 25
-        percthres = np.nanpercentile(loop_ph_rms_points_masked,percentile)
-        refyxs = np.where(loop_ph_rms_points_masked<percthres)
+        percthres = np.nanpercentile(coh_ratio_masked,percentile)
+        refyxs = np.where(coh_ratio_masked<percthres)
     refyxs = refyxs[0]+refyxs[1]*1j  # work in complex plane
     refnearyx = refnearyx[0]+refnearyx[1]*1j
     distref = np.abs(refyxs-refnearyx)
     # ok, let's directly weight with the loop err (this can be improved..)
-    weighted_dist = loop_ph_rms_points_masked[loop_ph_rms_points_masked<percthres]*distref
+    weighted_dist = coh_ratio_masked[coh_ratio_masked<percthres]*distref
     try:
-        refpoint = np.argmin(weighted_dist)
+        refpoint = np.nanargmin(weighted_dist)
         refy1 = int(np.real(refyxs[refpoint]))
         refx1 = int(np.imag(refyxs[refpoint]))
         print('selected ref point is '+str(distref[refpoint])+' px from desired location')
     except:
-        print('error - seems no points below '+str(percentile)+'% percentile of loop errors: '+str(percthres)+'. reverting to original licsbas approach')
-        loop_ph_rms_points_masked = realphrms
+        #print('error - seems no proper points below '+str(percentile)+'% percentile of loop errors: '+str(percthres)+'. reverting to original licsbas approach')
+        print('error - seems no proper points below '+str(percentile)+'% percentile of avg coh: '+str(percthres)+'. reverting to original licsbas approach')
+        #loop_ph_rms_points_masked = realphrms
         refyx = np.where(loop_ph_rms_points_masked==np.nanmin(loop_ph_rms_points_masked))
         refy1 = refyx[0][0] # start from 0, not 1
         refx1 = refyx[1][0]

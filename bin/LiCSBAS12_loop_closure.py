@@ -487,7 +487,7 @@ def main(argv=None):
     
     refy2 = refy1+1
     refx2 = refx1+1
-    loop_ph_rms_points_masked = realphrms
+    #loop_ph_rms_points_masked = realphrms
     
     ### Save 12ref.txt
     reffile = os.path.join(infodir, '12ref.txt')

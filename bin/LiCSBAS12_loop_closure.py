@@ -472,6 +472,7 @@ def main(argv=None):
     distref = np.abs(refyxs-refnearyx)
     # ok, let's directly weight with the loop err (this can be improved..)
     weighted_dist = coh_ratio_masked[coh_ratio_masked<percthres]*distref
+    weighted_dist = weighted_dist.ravel()
     try:
         refpoint = np.nanargmin(weighted_dist)
         refy1 = int(np.real(refyxs[refpoint]))
@@ -479,7 +480,8 @@ def main(argv=None):
         print('selected ref point is '+str(distref[refpoint])+' px from desired location')
     except:
         #print('error - seems no proper points below '+str(percentile)+'% percentile of loop errors: '+str(percthres)+'. reverting to original licsbas approach')
-        print('error - seems no proper points below '+str(percentile)+'% percentile of avg coh: '+str(percthres)+'. reverting to original licsbas approach')
+        #print('error - seems no proper points below '+str(percentile)+'% percentile of avg coh: '+str(percthres)+'. 
+        print('error in updated refpoint selection approach. reverting to original licsbas approach')
         #loop_ph_rms_points_masked = realphrms
         refyx = np.where(loop_ph_rms_points_masked==np.nanmin(loop_ph_rms_points_masked))
         refy1 = refyx[0][0] # start from 0, not 1

@@ -456,13 +456,15 @@ def main(argv=None):
     coh_avg[coh_avg==0] = np.nan
     #
     # for convenience (debug, to be checked if works ok), changing this to 1/coh
-    loop_ph_rms_points_masked = 1/coh_avg
+    print('Oct 2022 update: selecting ref point based on avg coh (and all in unw) instead of loop phase closure min (as it depends on prelim ref area/mean of scene)')
+    loop_ph_rms_points_masked = (1/coh_avg)*mask1*mask2
+    loop_ph_rms_points_masked[loop_ph_rms_points_masked==0] = np.nan
     percentile = 20
     percthres = np.nanpercentile(loop_ph_rms_points_masked,percentile)
     refyxs = np.where(loop_ph_rms_points_masked<percthres)
     if len(refyxs[0]) < 10:
         #decrease the limit
-        percentile = 50
+        percentile = 25
         percthres = np.nanpercentile(loop_ph_rms_points_masked,percentile)
         refyxs = np.where(loop_ph_rms_points_masked<percthres)
     refyxs = refyxs[0]+refyxs[1]*1j  # work in complex plane

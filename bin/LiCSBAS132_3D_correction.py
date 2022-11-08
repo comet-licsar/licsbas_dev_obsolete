@@ -307,7 +307,7 @@ def correction_decision():
                     ifg_corrected_by_integer.append(pair)
                     png_path = os.path.join(integer_png_dir, '{}.png'.format(pair))
 
-                plot_correction(pair, unw, con, unw_corrected, res_num_2pi, res_integer, res_mode, correction_title, res_rms, png_path)
+                plot_correction(pair, unw, con, unw_corrected, res_num_2pi, res_integer, res_mode, correction_title, res_rms, rms_res_integer_corrected, rms_res_mode_corrected, png_path)
 
                 # define output dir
                 correct_pair_dir = os.path.join(correct_dir, pair)
@@ -318,7 +318,7 @@ def correction_decision():
                 del con, unw, unw_corrected, res_num_2pi, res_integer, res_mm, res_rad, res_rms, correction_title
 
 
-def plot_correction(pair, unw, con, unw_corrected, res_num_2pi, res_integer, res_mode, correction_title, res_rms, png_path):
+def plot_correction(pair, unw, con, unw_corrected, res_num_2pi, res_integer, res_mode, correction_title, res_rms, rms_res_integer_corrected, rms_res_mode_corrected, png_path):
     fig, ax = plt.subplots(2, 3, figsize=(9, 5))
     fig.suptitle(pair)
     for x in ax[:, :].flatten():
@@ -337,8 +337,8 @@ def plot_correction(pair, unw, con, unw_corrected, res_num_2pi, res_integer, res
     ax[0, 1].set_title("Unw (rad)")
     ax[0, 2].set_title(correction_title)
     ax[1, 0].set_title("Residual/2pi (RMS={:.2f})".format(res_rms))
-    ax[1, 1].set_title("Nearest integer")
-    ax[1, 2].set_title("Component mode")
+    ax[1, 1].set_title("Nearest integer (to {:.2f})".format(rms_res_integer_corrected))
+    ax[1, 2].set_title("Component mode (to {:.2f})".format(rms_res_mode_corrected))
     # fig.colorbar(im_con, ax=ax[0, 0], location='right', shrink=0.8)
     fig.colorbar(im_unw, ax=ax[0, :], location='right', shrink=0.8)
     fig.colorbar(im_res, ax=ax[1, :], location='right', shrink=0.8)

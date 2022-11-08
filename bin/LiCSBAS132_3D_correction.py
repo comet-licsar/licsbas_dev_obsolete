@@ -103,7 +103,7 @@ def init_args():
     parser.add_argument('-g', dest='unw_dir', default="GEOCml10GACOS", help="folder containing unw input to be corrected")
     parser.add_argument('-r', dest='correct_dir', default="GEOCml10GACOS_corrected", help="folder for corrected unw")
     parser.add_argument('-t', dest='ts_dir', default="TS_GEOCml10GACOS", help="folder containing time series and residuals")
-    parser.add_argument('--thresh', default=0.5, help="threshold RMS residual per ifg as a fraction of 2 pi radian, used if info/131resid_2pi.txt doesn't exist")
+    parser.add_argument('--thresh', help="threshold RMS residual per ifg as a fraction of 2 pi radian, override info/131resid_2pi.txt")
     parser.add_argument('--suffix', default="", type=str, help="suffix of the input 131resid_2pi*.txt and outputs")
     args = parser.parse_args()
 
@@ -176,10 +176,15 @@ def get_para():
 
     # read threshold value
     resid_threshold_file = os.path.join(infodir, '131resid_2pi{}.txt'.format(args.suffix))
-    if os.path.exists(resid_threshold_file):
+    if args.thresh:
+        thresh = args.thresh
+    elif os.path.exists(resid_threshold_file):
         thresh = float(io_lib.get_param_par(resid_threshold_file, 'RMS_thresh'))
     else:
-        thresh = args.thresh
+        raise Exception("No input threshold or info/131resid_2pi*.txt file, quit...")
+        # thresh = 0.5
+        # else:
+    #     thresh = args.thresh
     print("Correction threshold = {:2f}".format(thresh))
 
     # read reference for plotting purpose

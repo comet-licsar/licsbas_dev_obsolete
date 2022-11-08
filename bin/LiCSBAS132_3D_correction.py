@@ -103,7 +103,7 @@ def init_args():
     parser.add_argument('-g', dest='unw_dir', default="GEOCml10GACOS", help="folder containing unw input to be corrected")
     parser.add_argument('-r', dest='correct_dir', default="GEOCml10GACOS_corrected", help="folder for corrected unw")
     parser.add_argument('-t', dest='ts_dir', default="TS_GEOCml10GACOS", help="folder containing time series and residuals")
-    parser.add_argument('--thresh', help="threshold RMS residual per ifg as a fraction of 2 pi radian, override info/131resid_2pi.txt")
+    parser.add_argument('-s', dest='correction_thresh', help="threshold RMS residual per ifg as a fraction of 2 pi radian, override info/131resid_2pi.txt")
     parser.add_argument('--suffix', default="", type=str, help="suffix of the input 131resid_2pi*.txt and outputs")
     args = parser.parse_args()
 
@@ -163,7 +163,7 @@ def set_input_output():
 
 
 def get_para():
-    global width, length, coef_r2m, thresh, ref_x, ref_y
+    global width, length, coef_r2m, correction_thresh, target_thresh, ref_x, ref_y
 
     # read ifg size and satellite frequency
     mlipar = os.path.join(ccdir, 'slc.mli.par')
@@ -176,16 +176,18 @@ def get_para():
 
     # read threshold value
     resid_threshold_file = os.path.join(infodir, '131resid_2pi{}.txt'.format(args.suffix))
-    if args.thresh:
-        thresh = args.thresh
+    if args.correction_thresh:
+        correction_thresh = args.thresh
     elif os.path.exists(resid_threshold_file):
-        thresh = float(io_lib.get_param_par(resid_threshold_file, 'RMS_thresh'))
+        correction_thresh = float(io_lib.get_param_par(resid_threshold_file, 'RMS_thresh'))
+        target_thresh = float(io_lib.get_param_par(resid_threshold_file, 'RMS_mode'))
     else:
         raise Exception("No input threshold or info/131resid_2pi*.txt file, quit...")
         # thresh = 0.5
         # else:
     #     thresh = args.thresh
-    print("Correction threshold = {:2f}".format(thresh))
+    print("Correction threshold = {:2f}".format(correction_thresh))
+    print("Target threshold = {:2f}".format(target_thresh))
 
     # read reference for plotting purpose
     reffile = os.path.join(infodir, '120ref.txt')
@@ -218,7 +220,7 @@ def correction_decision():
         res_num_2pi = res_num_2pi - peak
         res_rms = np.sqrt(np.nanmean(res_num_2pi ** 2))
 
-        if res_rms < thresh:
+        if res_rms < correction_thresh:
             good_ifg.append(pair)
             print("RMS residual = {:.2f}, good...".format(res_rms))
 
@@ -235,7 +237,6 @@ def correction_decision():
             plt.imshow(res_num_2pi, vmin=-2, vmax=2, cmap=cm.RdBu, interpolation='nearest')
             plt.title(pair + " RMS_res={:.2f}".format(res_rms))
             plt.colorbar()
-            png_path = os.path.join(resdir, 'good_ifgs/')
             plt.tight_layout()
             plt.savefig(good_png_dir + '{}.png'.format(pair), dpi=300, bbox_inches='tight')
             plt.close()
@@ -246,10 +247,10 @@ def correction_decision():
             print("RMS residual = {:2f}, not good...".format(res_rms))
             res_integer = np.round(res_num_2pi)
             rms_res_integer_corrected = np.sqrt(np.nanmean((res_num_2pi - res_integer) ** 2))
-            if rms_res_integer_corrected > thresh:
+            if rms_res_integer_corrected > target_thresh:
                 bad_ifg_not_corrected.append(pair)
                 print("Integer reduces rms residuals to {:.2f}, still above threshold of {:.2f}, discard...".format(
-                    rms_res_integer_corrected, thresh))
+                    rms_res_integer_corrected, target_thresh))
 
                 ## plot_res
                 fig, ax = plt.subplots(1, 2, figsize=(9, 6))
@@ -287,10 +288,10 @@ def correction_decision():
                 rms_res_mode_corrected = np.sqrt(np.nanmean((res_num_2pi - res_mode) ** 2))
 
                 # if component mode is useful
-                if rms_res_mode_corrected < thresh:
+                if rms_res_mode_corrected < target_thresh:
                     print(
                         "Component modes reduces rms residuals to {:.2f}, below threshold of {:.2f}, correcting by component mode...".format(
-                            rms_res_mode_corrected, thresh))
+                            rms_res_mode_corrected, target_thresh))
                     unw_corrected = unw - res_mode * 2 * np.pi
                     correction_title = "Mode_corrected"
                     ifg_corrected_by_mode.append(pair)
@@ -298,7 +299,7 @@ def correction_decision():
 
                 else:  # if component mode is not useful
                     print("Component modes reduces rms residuals to {:.2f}, above threshold of {:.2f}...".format(
-                        rms_res_mode_corrected, thresh))
+                        rms_res_mode_corrected, target_thresh))
                     print("Integer reduces rms residuals to {:.2f}, correcting by nearest integer...".format(
                         rms_res_integer_corrected))
                     unw_corrected = unw - res_integer * 2 * np.pi

@@ -60,7 +60,7 @@ def init_args():
     parser.add_argument('-f', dest='frame_dir', default="./", help="directory of LiCSBAS output of a particular frame")
     parser.add_argument('-g', dest='unw_dir', default="GEOCml10GACOS", help="folder containing slc.mli.par")
     parser.add_argument('-t', dest='ts_dir', default="TS_GEOCml10GACOS", help="folder containing time series")
-    parser.add_argument('-p', dest='percentile', default=80, type=float, help="percentile RMS for thresholding")
+    parser.add_argument('-p', dest='percentile', type=float, help="percentile RMS for thresholding")
     parser.add_argument('--suffix', default="", type=str, help="suffix of both input and output")
     args = parser.parse_args()
 
@@ -136,18 +136,31 @@ def plot_histogram_of_rms_of_depeaked_residuals():
 
         # plotting histogram and peak and threshold vertical lines
         count_ifg_res_rms, bin_edges, patches = plt.hist(res_rms_list, np.arange(0, 3, 0.1))
-        peak_ifg_res_rms = bin_edges[count_ifg_res_rms.argmax()] + 0.05
-        threshold = np.nanpercentile(res_rms_list, args.percentile)
-        plt.axvline(x=peak_ifg_res_rms, color='r', linestyle='--')
-        plt.axvline(x=threshold, color='r')
-        plt.title("Residual, peak = {:2f}, {}% = {:2f}".format(peak_ifg_res_rms, int(args.percentile), threshold))
+        peak_ifg_res_rms = bin_edges[count_ifg_res_rms.argmax()] + 0.05  # nanmode
+        median = np.nanpercentile(res_rms_list, 50)
+        mean = np.nanmean(res_rms_list)
+        plt.axvline(x=peak_ifg_res_rms, color='r', linestyle='..', label="mode = {:2f}".format(peak_ifg_res_rms))
+        plt.axvline(x=median, color='r', linestyle='--', label="median = {:2f}".format(median))
+        plt.axvline(x=mean, color='r', linestyle='-', label="mean = {:2f}".format(mean))
+        if args.percentile:
+            threshold = np.nanpercentile(res_rms_list, args.percentile)   # if specific threshold
+            plt.axvline(x=threshold, linestyle='-.', color='r', label="thresh = {:2f}".format(threshold))
+            plt.title("RMS Residual, {}% = {:2f}".format(int(args.percentile), threshold))
+        else:
+            threshold = mean
+            plt.axvline(x=threshold, linestyle='-.', color='r', label="thresh = {:2f}".format(threshold))
+            plt.title("RMS Residual, threshold = {:2f}".format(mean))
         plt.savefig(hist_png, dpi=300)
 
-        print('RMS_peak: {:5.2f}'.format(peak_ifg_res_rms), file=f)
-        print('RMS_percentile: {}'.format(int(args.percentile), ), file=f)
+        # for a right skewed distribution, mode < median < mean
+        print('RMS_mode: {:5.2f}'.format(peak_ifg_res_rms), file=f)
+        print('RMS_median: {:5.2f}'.format(median), file=f)
+        print('RMS_mean: {:5.2f}'.format(mean), file=f)
+        if args.percentile:
+            print('RMS_percentile: {}'.format(int(args.percentile), ), file=f)
+            print('IFG RMS res, mode = {:2f}, median = {:2f}, mean = {:2f}, {}% = {:2f}'.format(peak_ifg_res_rms, median, mean, int(args.percentile), threshold))
         print('RMS_thresh: {:5.2f}'.format(threshold), file=f)
-
-        print('IFG RMS res, peak = {:2f}, {}% = {:2f}'.format(peak_ifg_res_rms, int(args.percentile), threshold))
+        print('IFG RMS res, mode = {:2f}, median = {:2f}, mean (thresh) = {:2f}'.format(peak_ifg_res_rms, median, mean))
 
 
 def main():

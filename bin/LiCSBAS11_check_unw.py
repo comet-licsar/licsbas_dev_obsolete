@@ -1,7 +1,5 @@
 #!/usr/bin/env python3
 """
-v1.3.3 20210402 Yu Morishita, GSI
-
 ========
 Overview
 ========
@@ -35,12 +33,13 @@ Inputs in GEOCml*/ :
 =====
 Usage
 =====
-LiCSBAS11_check_unw.py -d ifgdir [-t tsadir] [-c coh_thre] [-u unw_thre]
+LiCSBAS11_check_unw.py -d ifgdir [-t tsadir] [-c coh_thre] [-u unw_thre] [-s]
 
  -d  Path to the GEOCml* dir containing stack of unw data.
  -t  Path to the output TS_GEOCml* dir. (Default: TS_GEOCml*)
  -c  Threshold of average coherence (Default: 0.05)
  -u  Threshold of coverage of unw data (Default: 0.3)
+ -s  Check for coregistration error in the form of a significant azimuthal ramp
 
 """
 #%% Change log
@@ -95,7 +94,7 @@ def main(argv=None):
         argv = sys.argv
 
     start = time.time()
-    ver="1.0"; date=20221020; author="Qi Ou"
+    ver="1.4"; date=20221020; author="Qi Ou"
     print("\n{} ver{} {} {}".format(os.path.basename(argv[0]), ver, date, author), flush=True)
     print("{} {}".format(os.path.basename(argv[0]), ' '.join(argv[1:])), flush=True)
 
@@ -105,12 +104,12 @@ def main(argv=None):
     tsadir = []
     coh_thre = 0.05
     unw_cov_thre = 0.3
-
+    check_coreg_slope = False
 
     #%% Read options
     try:
         try:
-            opts, args = getopt.getopt(argv[1:], "hd:t:c:u:", ["help"])
+            opts, args = getopt.getopt(argv[1:], "hd:t:c:u:s", ["help"])
         except getopt.error as msg:
             raise Usage(msg)
         for o, a in opts:
@@ -324,9 +323,12 @@ def main(argv=None):
     ifg_statsfile = os.path.join(infodir, '11ifg_stats.txt')
     fstats = open(ifg_statsfile, 'w')
     print('# Size: {0}({1}x{2}), n_valid: {3}'.format(width*length, width, length, n_unw_valid), file=fstats)
-    print('# unw_cov_thre: {0}, coh_thre: {1}, |slope|:30 & r^2: 0.95 => repeated epochs => |slope|:20'.format(unw_cov_thre, coh_thre), file=fstats)
-    print('# ifg dates         bperp   dt unw_cov  coh_av   |slope|   r^2', file=fstats)
-
+    if check_coreg_slope:
+        print('# unw_cov_thre: {0}, coh_thre: {1}, |slope|:30 & r^2: 0.95 => repeated epochs => |slope|:20'.format(unw_cov_thre, coh_thre), file=fstats)
+        print('# ifg dates         bperp   dt unw_cov  coh_av   |slope|   r^2', file=fstats)
+    else:
+        print('# unw_cov_thre: {0}, coh_thre: {1}'.format(unw_cov_thre, coh_thre), file=fstats)
+        print('# ifg dates         bperp   dt unw_cov  coh_av', file=fstats)
 
     ### Identify suffix of raster image (png, ras or bmp?)
     unwfile = os.path.join(ifgdir, ifgdates[0], ifgdates[0]+'.unw')
@@ -371,18 +373,24 @@ def main(argv=None):
         if check_coreg_slope:
             print('{0}  {1:6.1f}  {2:3}   {3:5.3f}   {4:5.3f}    {5:5.3f}    {6:5.3f}  {7}'.format(ifgd, bperp_ifg, dt_ifg, rate_cov[i],  coh_avg_ifg[i], slope_ifg[i], r_square_ifg[i], rm_flag), file=fstats)
         else:
-            print('{0}  {1:6.1f}  {2:3}   {3:5.3f}   {4:5.3f}    {7}'.format(ifgd, bperp_ifg, dt_ifg, rate_cov[i], coh_avg_ifg[i], rm_flag), file=fstats)
+            print('{0}  {1:6.1f}  {2:3}   {3:5.3f}   {4:5.3f}    {5}'.format(ifgd, bperp_ifg, dt_ifg, rate_cov[i], coh_avg_ifg[i], rm_flag), file=fstats)
 
     fstats.close()
 
     ### Output list of bad ifg
-    print('\n{0}/{1} ifgs are discarded from further processing.'.format(len(bad_ifgdates), n_ifg))
-    print('ifg dates        unw_cov coh_av')
     bad_ifgfile = os.path.join(infodir, '11bad_ifg.txt')
+    print('\n{0}/{1} ifgs are discarded from further processing.'.format(len(bad_ifgdates), n_ifg))
     with open(bad_ifgfile, 'w') as f:
-        for i, ifgd in enumerate(bad_ifgdates):
-            print('{}'.format(ifgd), file=f)
-            print('{}  {:5.3f}  {:5.3f}'.format(ifgd, rate_cov[ixs_bad_ifgdates[i]],  coh_avg_ifg[ixs_bad_ifgdates[i]]), flush=True)
+        if check_coreg_slope:
+            print('ifg dates        unw_cov coh_av  |slope|   R^2')
+            for i, ifgd in enumerate(bad_ifgdates):
+                print('{}'.format(ifgd), file=f)
+                print('{}  {:5.3f}  {:5.3f}   {:5.3f}   {:5.3f}'.format(ifgd, rate_cov[ixs_bad_ifgdates[i]],  coh_avg_ifg[ixs_bad_ifgdates[i]], slope_ifg[ixs_bad_ifgdates[i]], r_square_ifg[ixs_bad_ifgdates[i]]), flush=True)
+        else:
+            print('ifg dates        unw_cov coh_av')
+            for i, ifgd in enumerate(bad_ifgdates):
+                print('{}'.format(ifgd), file=f)
+                print('{}  {:5.3f}  {:5.3f}'.format(ifgd, rate_cov[ixs_bad_ifgdates[i]],  coh_avg_ifg[ixs_bad_ifgdates[i]]), flush=True)
 
     ### Raise error if all ifgs are bad
     if len(bad_ifgdates) == n_ifg:

@@ -125,6 +125,8 @@ def main(argv=None):
                 coh_thre = float(a)
             elif o == '-u':
                 unw_cov_thre = float(a)
+            elif o == '-s':
+                check_coreg_slope = True
 
         if not ifgdir:
             raise Usage('No data directory given, -d is not optional!')
@@ -261,42 +263,47 @@ def main(argv=None):
 
         coh_avg_ifg.append(np.nanmean(coh[bool_valid])) # Use valid area only
 
-        ## middle column slope
-        middle_column = unw[:, width // 2]
-        middle_column_latitudes = np.arange(length) * lattitude_resolution
-        non_nan_mask = ~np.isnan(middle_column)
-        if np.sum(non_nan_mask) > 1:
-            slope, intercept, r_value, p_value, std_err = stats.linregress(middle_column_latitudes[non_nan_mask], middle_column[non_nan_mask])
-            slope_ifg.append(abs(slope))
-            r_square_ifg.append(r_value**2)
-            if abs(slope) > 30 and r_value**2 > 0.95:
-                coreg_error_ifg.append(ifgd)
-        else:
-            slope_ifg.append(0)
-            r_square_ifg.append(0)
-    ## identify epochs with more than 1 coreg_errors captured by threshold:
-    primarylist = []
-    secondarylist = []
-    for pairs in coreg_error_ifg:
-        primarylist.append(pairs[:8])
-        secondarylist.append(pairs[-8:])
-    all_epochs = primarylist + secondarylist
-    all_epochs.sort()
-    coreg_error_epochs, counts = np.unique(all_epochs, return_counts=True)
-    coreg_error_epochs = coreg_error_epochs[counts>1]
+        if check_coreg_slope:
+            ## middle column slope
+            middle_column = unw[:, width // 2]
+            middle_column_latitudes = np.arange(length) * lattitude_resolution
+            non_nan_mask = ~np.isnan(middle_column)
+            if np.sum(non_nan_mask) > 1:
+                slope, intercept, r_value, p_value, std_err = stats.linregress(middle_column_latitudes[non_nan_mask], middle_column[non_nan_mask])
+                slope_ifg.append(abs(slope))
+                r_square_ifg.append(r_value**2)
+                if abs(slope) > 30 and r_value**2 > 0.95:
+                    coreg_error_ifg.append(ifgd)
+            else:
+                slope_ifg.append(0)
+                r_square_ifg.append(0)
 
-    ## grow the shortlist with repeated epochs in the shortlist
-    ifg_containing_coreg_error_epochs = np.zeros(len(ifgdates))
-    all_ifg_epoch1 = []
-    all_ifg_epoch2 = []
-    for pairs in ifgdates:
-        all_ifg_epoch1.append(pairs[:8])
-        all_ifg_epoch2.append(pairs[-8:])
-    for epoch in coreg_error_epochs:
-        ifg_containing_coreg_error_epochs += np.array(all_ifg_epoch1) == epoch
-        ifg_containing_coreg_error_epochs += np.array(all_ifg_epoch2) == epoch
-    ## threshold the expanded list with criteria slope_ifg => 20
-    ifg_containing_coreg_error_epochs[np.array(slope_ifg) < 20] = 0 
+    if check_coreg_slope:
+        ## identify epochs with more than 1 coreg_errors captured by threshold:
+        primarylist = []
+        secondarylist = []
+        for pairs in coreg_error_ifg:
+            primarylist.append(pairs[:8])
+            secondarylist.append(pairs[-8:])
+        all_epochs = primarylist + secondarylist
+        all_epochs.sort()
+        coreg_error_epochs, counts = np.unique(all_epochs, return_counts=True)
+        coreg_error_epochs = coreg_error_epochs[counts>1]
+
+        ## grow the shortlist with repeated epochs in the shortlist
+        ifg_containing_coreg_error_epochs = np.zeros(len(ifgdates))
+        all_ifg_epoch1 = []
+        all_ifg_epoch2 = []
+        for pairs in ifgdates:
+            all_ifg_epoch1.append(pairs[:8])
+            all_ifg_epoch2.append(pairs[-8:])
+        for epoch in coreg_error_epochs:
+            ifg_containing_coreg_error_epochs += np.array(all_ifg_epoch1) == epoch
+            ifg_containing_coreg_error_epochs += np.array(all_ifg_epoch2) == epoch
+        ## threshold the expanded list with criteria slope_ifg => 20
+        ifg_containing_coreg_error_epochs[np.array(slope_ifg) < 20] = 0
+    else:
+        ifg_containing_coreg_error_epochs = np.zeros(len(ifgdates)) # dummy
 
     ## convert unw pixels into percentage unw coverage
     rate_cov = np.array(n_unw_ifg)/n_unw_valid
@@ -319,6 +326,7 @@ def main(argv=None):
     print('# Size: {0}({1}x{2}), n_valid: {3}'.format(width*length, width, length, n_unw_valid), file=fstats)
     print('# unw_cov_thre: {0}, coh_thre: {1}, |slope|:30 & r^2: 0.95 => repeated epochs => |slope|:20'.format(unw_cov_thre, coh_thre), file=fstats)
     print('# ifg dates         bperp   dt unw_cov  coh_av   |slope|   r^2', file=fstats)
+
 
     ### Identify suffix of raster image (png, ras or bmp?)
     unwfile = os.path.join(ifgdir, ifgdates[0], ifgdates[0]+'.unw')
@@ -360,8 +368,10 @@ def main(argv=None):
         mday = dt.datetime.strptime(ifgd[:8], '%Y%m%d').toordinal()
         sday = dt.datetime.strptime(ifgd[-8:], '%Y%m%d').toordinal()
         dt_ifg = sday-mday
-
-        print('{0}  {1:6.1f}  {2:3}   {3:5.3f}   {4:5.3f}    {5:5.3f}    {6:5.3f}  {7}'.format(ifgd, bperp_ifg, dt_ifg, rate_cov[i],  coh_avg_ifg[i], slope_ifg[i], r_square_ifg[i], rm_flag), file=fstats)
+        if check_coreg_slope:
+            print('{0}  {1:6.1f}  {2:3}   {3:5.3f}   {4:5.3f}    {5:5.3f}    {6:5.3f}  {7}'.format(ifgd, bperp_ifg, dt_ifg, rate_cov[i],  coh_avg_ifg[i], slope_ifg[i], r_square_ifg[i], rm_flag), file=fstats)
+        else:
+            print('{0}  {1:6.1f}  {2:3}   {3:5.3f}   {4:5.3f}    {7}'.format(ifgd, bperp_ifg, dt_ifg, rate_cov[i], coh_avg_ifg[i], rm_flag), file=fstats)
 
     fstats.close()
 

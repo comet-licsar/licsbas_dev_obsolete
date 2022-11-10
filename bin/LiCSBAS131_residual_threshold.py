@@ -139,7 +139,7 @@ def plot_histogram_of_rms_of_depeaked_residuals():
         peak_ifg_res_rms = bin_edges[count_ifg_res_rms.argmax()] + 0.05  # nanmode
         median = np.nanpercentile(res_rms_list, 50)
         mean = np.nanmean(res_rms_list)
-        plt.axvline(x=peak_ifg_res_rms, color='r', linestyle='..', label="mode = {:2f}".format(peak_ifg_res_rms))
+        plt.axvline(x=peak_ifg_res_rms, color='r', linestyle=':', label="mode = {:2f}".format(peak_ifg_res_rms))
         plt.axvline(x=median, color='r', linestyle='--', label="median = {:2f}".format(median))
         plt.axvline(x=mean, color='r', linestyle='-', label="mean = {:2f}".format(mean))
         if args.percentile:

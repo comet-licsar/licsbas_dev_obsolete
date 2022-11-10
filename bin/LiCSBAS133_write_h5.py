@@ -252,7 +252,7 @@ def calc_n_loop_error(n_unw):
 def write_h5():
     # Write additional results to h5
     print('\nWriting to HDF5 file...')
-    cumh5 = h5.File(cumh5file, 'w')
+    cumh5 = h5.File(cumh5file, 'a')
     compress = 'gzip'
     indices = ['coh_avg', 'hgt', 'n_loop_err', 'n_unw', 'slc.mli']
 

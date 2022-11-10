@@ -1,9 +1,0 @@
-numpy
-astropy
-beautifulsoup4
-h5py
-matplotlib
-psutil
-requests
-shapely
-statsmodels

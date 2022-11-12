@@ -22,3 +22,5 @@ dependencies:
   - cartopy
   - panel
   - holoviews
+  - netCDF4
+  - bottleneck

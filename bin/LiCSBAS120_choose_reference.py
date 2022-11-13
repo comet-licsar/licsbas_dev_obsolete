@@ -154,6 +154,7 @@ def get_ifgdates():
 
 
 def calc_block_sum_of_unw_coh_component_size():
+    global block_unw, block_coh, block_con, ifgd
     ### Start counting indices for choosing the reference
     n_unw = np.zeros((length, width), dtype=np.float32)
     n_coh = np.zeros((length, width), dtype=np.float32)
@@ -189,11 +190,9 @@ def calc_block_sum_of_unw_coh_component_size():
     block_coh = block_sum(n_coh, window_size)
     block_con = block_sum(n_con, window_size)
 
-    return block_unw, block_coh, block_con, ifgd
-
 
 def calc_height_std():
-    # global block_rms_hgt
+    global block_rms_hgt
     ### calculate block standard deviation of height
     hgtfile = os.path.join(resultsdir, 'hgt')
     hgt = io_lib.read_img(hgtfile, length, width)
@@ -203,10 +202,10 @@ def calc_height_std():
     hgt_demean = hgt - broadcast_mean_hgt[:hgt.shape[0], :hgt.shape[1]]
     hgt_demean_square = hgt_demean ** 2
     block_rms_hgt = np.sqrt( block_sum(hgt_demean_square, window_size) / (window_size ** 2) )
-    return block_rms_hgt
 
 
-def clip_normalise_combine_indices(block_unw, block_coh, block_con, block_rms_hgt):
+def clip_normalise_combine_indices():
+    global block_proxy
     ### turn 0 to nan
     block_unw[block_unw == 0] = np.nan
     block_coh[block_coh == 0] = np.nan
@@ -229,10 +228,10 @@ def clip_normalise_combine_indices(block_unw, block_coh, block_con, block_rms_hg
     block_proxy = args.w_unw * block_unw + args.w_coh * block_coh + args.w_con * block_con - args.w_hgt * block_rms_hgt
     block_proxy = (block_proxy - np.nanmin(block_proxy)) / (np.nanmax(block_proxy) - np.nanmin(block_proxy))
 
-    return block_proxy
 
-
-def closest_to_ref_center(block_proxy):
+def closest_to_ref_center():
+    ''' Find the point with large enough (>args.thresh) block_proxy that is the closest to
+    the desired ref center defined by args.refx and args.refy'''
     global desired_ref_center_x, desired_ref_center_y, refx, refy
     ## choose distance closer to center
     desired_ref_center_y = int(block_proxy.shape[0] * args.refy)
@@ -246,7 +245,7 @@ def closest_to_ref_center(block_proxy):
     print("Reference nearest to center: refy={}, refx={}".format(refy, refx))
 
 
-def plot_ref_proxies(block_unw, block_coh, block_con, block_rms_hgt, block_proxy, ifgd):
+def plot_ref_proxies():
     ### load example unw for plotting in block resolution
     unwfile = os.path.join(ifgdir, ifgd, ifgd + '.unw')
     unw = io_lib.read_img(unwfile, length, width)
@@ -351,12 +350,12 @@ def main():
     decide_reference_window_size()
     get_ifgdates()
 
-    block_unw, block_coh, block_con, ifgd = calc_block_sum_of_unw_coh_component_size()
-    block_rms_hgt = calc_height_std()
-    block_proxy = clip_normalise_combine_indices(block_unw, block_coh, block_con, block_rms_hgt)
+    calc_block_sum_of_unw_coh_component_size()
+    calc_height_std()
+    clip_normalise_combine_indices()
 
-    closest_to_ref_center(block_proxy)
-    plot_ref_proxies(block_unw, block_coh, block_con, block_rms_hgt, block_proxy, ifgd)
+    closest_to_ref_center()
+    plot_ref_proxies()
     save_reference_to_file()
     discard_ifg_with_all_nans_at_ref()
     plot_networks()

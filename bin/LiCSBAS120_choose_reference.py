@@ -205,7 +205,7 @@ def calc_height_std():
 
 
 def clip_normalise_combine_indices():
-    global block_proxy
+    global block_proxy, block_unw, block_coh, block_con, block_rms_hgt
     ### turn 0 to nan
     block_unw[block_unw == 0] = np.nan
     block_coh[block_coh == 0] = np.nan

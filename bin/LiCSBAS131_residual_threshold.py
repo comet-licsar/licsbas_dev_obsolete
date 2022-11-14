@@ -60,6 +60,7 @@ def init_args():
     parser.add_argument('-f', dest='frame_dir', default="./", help="directory of LiCSBAS output of a particular frame")
     parser.add_argument('-g', dest='unw_dir', default="GEOCml10GACOS", help="folder containing slc.mli.par")
     parser.add_argument('-t', dest='ts_dir', default="TS_GEOCml10GACOS", help="folder containing time series")
+    parser.add_argument('-r', dest='thresh', type=float, help="user specified threshold value")
     parser.add_argument('-p', dest='percentile', type=float, help="percentile RMS for thresholding")
     parser.add_argument('--suffix', default="", type=str, help="suffix of both input and output")
     parser.add_argument('--depeak', default=False, action='store_true', help="whether to calculate RMS residual after offsetting by mode residual")
@@ -146,8 +147,12 @@ def plot_histogram_of_rms_of_depeaked_residuals():
         plt.axvline(x=median, color='r', linestyle='--', label="median = {:.2f}".format(median))
         plt.axvline(x=mean, color='r', linestyle='-', label="mean = {:.2f}".format(mean))
 
-        # auto selection of threshold based on mode value
-        if peak_ifg_res_rms < 0.1:
+        # auto selection of threshold based on mode value if neither -r (args.thresh) nor -p (args.percentile) is specified by the user
+        if args.thresh:
+            threshold = args.thresh
+        elif args.percentile:
+            threshold = np.nanpercentile(res_rms_list, args.percentile)
+        elif peak_ifg_res_rms < 0.1:
             threshold = 0.2
         else:
             threshold = 2 * peak_ifg_res_rms

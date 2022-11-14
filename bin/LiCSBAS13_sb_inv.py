@@ -273,7 +273,10 @@ def main(argv=None):
 
     bad_ifg11file = os.path.join(infodir, '11bad_ifg.txt')
     bad_ifg12file = os.path.join(infodir, '12bad_ifg.txt')
+    # if ref point selected using LiCSBAS120:
     reffile = os.path.join(infodir, '120ref.txt')
+    if not os.path.exists(reffile):
+        reffile = os.path.join(infodir, '12ref.txt')
     if not os.path.exists(reffile): ## for old LiCSBAS12 < v1.1
         reffile = os.path.join(infodir, 'ref.txt')
 

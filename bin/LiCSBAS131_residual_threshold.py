@@ -60,10 +60,10 @@ def init_args():
     parser.add_argument('-f', dest='frame_dir', default="./", help="directory of LiCSBAS output of a particular frame")
     parser.add_argument('-g', dest='unw_dir', default="GEOCml10GACOS", help="folder containing slc.mli.par")
     parser.add_argument('-t', dest='ts_dir', default="TS_GEOCml10GACOS", help="folder containing time series")
-    parser.add_argument('-r', dest='thresh', type=float, help="user specified threshold value")
-    parser.add_argument('-p', dest='percentile', type=float, help="percentile RMS for thresholding")
+    parser.add_argument('-r', dest='thresh', type=float, help="user specified threshold value, otherwise auto-detected")
+    parser.add_argument('-p', dest='percentile', type=float, help="optional percentile RMS for thresholding")
     parser.add_argument('--suffix', default="", type=str, help="suffix of both input and output")
-    parser.add_argument('--depeak', default=False, action='store_true', help="whether to calculate RMS residual after offsetting by mode residual")
+    parser.add_argument('--depeak', default=False, action='store_true', help="calculate RMS residual after offset by mode")
     args = parser.parse_args()
 
 

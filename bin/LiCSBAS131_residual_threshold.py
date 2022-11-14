@@ -60,8 +60,10 @@ def init_args():
     parser.add_argument('-f', dest='frame_dir', default="./", help="directory of LiCSBAS output of a particular frame")
     parser.add_argument('-g', dest='unw_dir', default="GEOCml10GACOS", help="folder containing slc.mli.par")
     parser.add_argument('-t', dest='ts_dir', default="TS_GEOCml10GACOS", help="folder containing time series")
-    parser.add_argument('-p', dest='percentile', type=float, help="percentile RMS for thresholding")
+    parser.add_argument('-r', dest='thresh', type=float, help="user specified threshold value, otherwise auto-detected")
+    parser.add_argument('-p', dest='percentile', type=float, help="optional percentile RMS for thresholding")
     parser.add_argument('--suffix', default="", type=str, help="suffix of both input and output")
+    parser.add_argument('--depeak', default=False, action='store_true', help="calculate RMS residual after offset by mode")
     args = parser.parse_args()
 
 
@@ -126,9 +128,10 @@ def plot_histogram_of_rms_of_depeaked_residuals():
             res_mm = np.fromfile(i, dtype=np.float32)
             res_rad = res_mm / coef_r2m
             res_num_2pi = res_rad / 2 / np.pi
-            counts, bins = np.histogram(res_num_2pi, np.arange(-2.5, 2.6, 0.1))
-            peak = bins[counts.argmax()] + 0.05
-            res_num_2pi = res_num_2pi - peak
+            if args.depeak:
+                counts, bins = np.histogram(res_num_2pi, np.arange(-2.5, 2.6, 0.1))
+                peak = bins[counts.argmax()] + 0.05
+                res_num_2pi = res_num_2pi - peak
             res_rms = np.sqrt(np.nanmean(res_num_2pi ** 2))
             res_rms_list.append(res_rms)
 
@@ -137,30 +140,38 @@ def plot_histogram_of_rms_of_depeaked_residuals():
         # plotting histogram and peak and threshold vertical lines
         count_ifg_res_rms, bin_edges, patches = plt.hist(res_rms_list, np.arange(0, 3, 0.1))
         peak_ifg_res_rms = bin_edges[count_ifg_res_rms.argmax()] + 0.05  # nanmode
+        # plotting median and mean to illustrate skewedness of the distribution. mode<median<mean = right skewed
         median = np.nanpercentile(res_rms_list, 50)
         mean = np.nanmean(res_rms_list)
-        plt.axvline(x=peak_ifg_res_rms, color='r', linestyle=':', label="mode = {:2f}".format(peak_ifg_res_rms))
-        plt.axvline(x=median, color='r', linestyle='--', label="median = {:2f}".format(median))
-        plt.axvline(x=mean, color='r', linestyle='-', label="mean = {:2f}".format(mean))
-        if args.percentile:
-            threshold = np.nanpercentile(res_rms_list, args.percentile)   # if specific threshold
-            plt.axvline(x=threshold, linestyle='-.', color='r', label="thresh = {:2f}".format(threshold))
-            plt.title("RMS Residual, {}% = {:2f}".format(int(args.percentile), threshold))
-        else:
-            threshold = mean
-            plt.axvline(x=threshold, linestyle='-.', color='r', label="thresh = {:2f}".format(threshold))
-            plt.title("RMS Residual, threshold = {:2f}".format(mean))
-        plt.savefig(hist_png, dpi=300)
+        plt.axvline(x=peak_ifg_res_rms, color='r', linestyle=':', label="mode = {:.2f}".format(peak_ifg_res_rms))
+        plt.axvline(x=median, color='r', linestyle='--', label="median = {:.2f}".format(median))
+        plt.axvline(x=mean, color='r', linestyle='-', label="mean = {:.2f}".format(mean))
 
-        # for a right skewed distribution, mode < median < mean
+        # auto selection of threshold based on mode value if neither -r (args.thresh) nor -p (args.percentile) is specified by the user
+        if args.thresh:
+            threshold = args.thresh
+        elif args.percentile:
+            threshold = np.nanpercentile(res_rms_list, args.percentile)
+        elif peak_ifg_res_rms < 0.1:
+            threshold = 0.2
+        else:
+            threshold = 2 * peak_ifg_res_rms
+
+        plt.axvline(x=threshold, linestyle='-.', color='cyan', label="thresh = {:.2f}".format(threshold))
+        plt.legend()
+        plt.title("RMS Residual, threshold = {:.2f}".format(threshold))
+        plt.savefig(hist_png, dpi=300)
+        plt.close()
+
+        # print to file
         print('RMS_mode: {:5.2f}'.format(peak_ifg_res_rms), file=f)
         print('RMS_median: {:5.2f}'.format(median), file=f)
         print('RMS_mean: {:5.2f}'.format(mean), file=f)
         if args.percentile:
             print('RMS_percentile: {}'.format(int(args.percentile), ), file=f)
-            print('IFG RMS res, mode = {:2f}, median = {:2f}, mean = {:2f}, {}% = {:2f}'.format(peak_ifg_res_rms, median, mean, int(args.percentile), threshold))
+            print('IFG RMS res, mode = {:.2f}, median = {:.2f}, mean = {:.2f}, {}% = {:.2f}'.format(peak_ifg_res_rms, median, mean, int(args.percentile), threshold))
         print('RMS_thresh: {:5.2f}'.format(threshold), file=f)
-        print('IFG RMS res, mode = {:2f}, median = {:2f}, mean (thresh) = {:2f}'.format(peak_ifg_res_rms, median, mean))
+        print('IFG RMS res, mode = {:.2f}, median = {:.2f}, mean = {:.2f}, thresh = {:.2f}'.format(peak_ifg_res_rms, median, mean, threshold))
 
 
 def main():

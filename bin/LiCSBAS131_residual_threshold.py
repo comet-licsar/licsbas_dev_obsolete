@@ -154,7 +154,7 @@ def plot_histogram_of_rms_of_depeaked_residuals():
 
         plt.axvline(x=threshold, linestyle='-.', color='cyan', label="thresh = {:.2f}".format(threshold))
         plt.legend()
-        plt.title("RMS Residual, threshold = {:.2f}".format(mean))
+        plt.title("RMS Residual, threshold = {:.2f}".format(threshold))
         plt.savefig(hist_png, dpi=300)
         plt.close()
 

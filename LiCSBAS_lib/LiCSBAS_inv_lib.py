@@ -38,6 +38,7 @@ import multiprocessing as multi
 from astropy.stats import bootstrap
 from astropy.utils import NumpyRNGContext
 import LiCSBAS_tools_lib as tools_lib
+from sklearn.linear_model import RANSACRegressor
 
 
 #%%
@@ -456,6 +457,41 @@ def calc_velsin(cum, dt_cum, imd0):
     delta_t[delta_t > 365.25] = delta_t[delta_t > 365.25]-365.25
 
     return vel, vconst, amp, delta_t
+
+
+
+def get_vel_ransac(dt_cum, cumm):
+    """
+    Recalculate velocity (and intercept) using RANSAC algorithm to identify/skip use of outliers.
+    
+    Inputs:
+       dt_cum   : delta time values for the cumm. time series
+       cumm     : the cumm. time series values, array of shape (n_points, n_dates)
+    
+    Returns:
+       vel2     : recalculated velocity for each point
+    """
+    X=dt_cum.reshape(-1,1)  # single feature (time) of dt_cum.shape[0] samples
+    vel2 = np.zeros(cumm.shape[0])
+    intercept2 = np.zeros(cumm.shape[0])
+    
+    for i in range(cumm.shape[0]):
+        y=cumm[i]
+        mask = ~np.isnan(y)
+        if np.mod(i, 100) == 0:
+            print('\r  Running {0:6}/{1:6}th point...'.format(i, cumm.shape[0]), end='', flush=True)
+        if np.sum(mask) < 2:
+            # 'all' nan situation
+            vel2[i] = np.nan
+            intercept2[i] = np.nan
+        else:
+            reg = RANSACRegressor().fit(X[mask],y[mask])   # the implementation is fine, parameters should be quite robust
+            # yet, one may check parameters max_trials[=100]
+            vel2[i] = reg.estimator_.coef_[0]
+            intercept2[i] = reg.estimator_.intercept_ # if needed..
+    
+    print('')
+    return vel2, intercept2
 
 
 #%%

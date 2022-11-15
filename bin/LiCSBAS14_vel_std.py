@@ -211,7 +211,7 @@ def main(argv=None):
             vel2 = np.zeros((n_pt_all), dtype=np.float32)*np.nan
             intercept2 = np.zeros((n_pt_all), dtype=np.float32)*np.nan
             print('  Recalculating velocity using RANSAC algorithm...', flush=True)
-            vel2[bool_unnan_pt], intercept2[bool_unnan_pt] = inv_lib.get_vel_ransac(dt_cum, cum_patch)
+            vel2[bool_unnan_pt], intercept2[bool_unnan_pt] = inv_lib.get_vel_ransac(dt_cum, cum_patch, return_intercept=True)
             
             ### Output data and image
             vel2file = os.path.join(resultsdir, 'vel2')

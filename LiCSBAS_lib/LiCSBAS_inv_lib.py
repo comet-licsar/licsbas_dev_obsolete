@@ -460,7 +460,7 @@ def calc_velsin(cum, dt_cum, imd0):
 
 
 
-def get_vel_ransac(dt_cum, cumm):
+def get_vel_ransac(dt_cum, cumm, return_intercept=False):
     """
     Recalculate velocity (and intercept) using RANSAC algorithm to identify/skip use of outliers.
     
@@ -473,7 +473,8 @@ def get_vel_ransac(dt_cum, cumm):
     """
     X=dt_cum.reshape(-1,1)  # single feature (time) of dt_cum.shape[0] samples
     vel2 = np.zeros(cumm.shape[0])
-    intercept2 = np.zeros(cumm.shape[0])
+    if return_intercept:
+        intercept2 = np.zeros(cumm.shape[0])
     
     for i in range(cumm.shape[0]):
         y=cumm[i]
@@ -483,15 +484,20 @@ def get_vel_ransac(dt_cum, cumm):
         if np.sum(mask) < 2:
             # 'all' nan situation
             vel2[i] = np.nan
-            intercept2[i] = np.nan
+            if return_intercept:
+                intercept2[i] = np.nan
         else:
             reg = RANSACRegressor().fit(X[mask],y[mask])   # the implementation is fine, parameters should be quite robust
             # yet, one may check parameters max_trials[=100]
             vel2[i] = reg.estimator_.coef_[0]
-            intercept2[i] = reg.estimator_.intercept_ # if needed..
+            if return_intercept:
+                intercept2[i] = reg.estimator_.intercept_ # if needed..
     
     print('')
-    return vel2, intercept2
+    if return_intercept:
+        return vel2 , intercept2
+    else:
+        return vel2
 
 
 #%%

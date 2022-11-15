@@ -22,9 +22,10 @@ Outputs in TS_GEOCml*/results/ :
 =====
 Usage
 =====
-LiCSBAS14_vel_std.py -t tsadir [--mem_size float] [--gpu] [--ransac]
+LiCSBAS14_vel_std.py -t tsadir [-i cumfile] [--mem_size float] [--gpu] [--ransac]
 
  -t  Path to the TS_GEOCml* dir.
+ -i  Path to cum file (Default: cum.h5)
  --mem_size   Max memory size for each patch in MB. (Default: 4000)
  --gpu        Use GPU (Need cupy module)
  --ransac     Recalculate velocity free from outliers (use RANSAC algorithm)
@@ -82,11 +83,12 @@ def main(argv=None):
     gpu = False
     ransac = False
     cmap_noise_r = 'viridis_r'
-
+    cumfile = False
+    
     #%% Read options
     try:
         try:
-            opts, args = getopt.getopt(argv[1:], "ht:",
+            opts, args = getopt.getopt(argv[1:], "ht:i:",
                                        ["help", "mem_size=", "gpu", "ransac"])
         except getopt.error as msg:
             raise Usage(msg)
@@ -96,6 +98,8 @@ def main(argv=None):
                 return 0
             elif o == '-t':
                 tsadir = a
+            elif o == '-i':
+                cumfile = a
             elif o == '--mem_size':
                 memory_size = float(a)
             elif o == '--gpu':
@@ -125,7 +129,16 @@ def main(argv=None):
 
 
     #%% Read data information
-    cumh5 = h5.File(os.path.join(tsadir,'cum.h5'), 'r')
+    if not cumfile:
+        os.path.join(tsadir,'cum.h5')
+        if ransac:
+            print('WARNING, using unmasked result (cum.h5) with RANSAC iterations - might take ages (not parallel yet)')
+    else:
+        if not os.path.exists(cumfile):
+            print('Error reading specified input file, please fix')
+            return 2
+    
+    cumh5 = h5.File(cumfile, 'r')
 
     imdates = cumh5['imdates'][()].astype(str).tolist()
     cum = cumh5['cum']

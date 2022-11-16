@@ -132,7 +132,7 @@ def main(argv=None):
     if not cumfile:
         cumfile=os.path.join(tsadir,'cum.h5')
         if ransac:
-            print('WARNING, using unmasked result (cum.h5) with RANSAC iterations - might take ages (not parallel yet)')
+            print('WARNING, using unmasked result (cum.h5) with RANSAC iterations - might take long (not parallel yet)')
     else:
         if not os.path.exists(cumfile):
             print('Error reading specified input file, please fix')
@@ -211,6 +211,16 @@ def main(argv=None):
             vel2 = np.zeros((n_pt_all), dtype=np.float32)*np.nan
             intercept2 = np.zeros((n_pt_all), dtype=np.float32)*np.nan
             print('  Recalculating velocity using RANSAC algorithm...', flush=True)
+            '''
+            for the next release:
+            import dask
+            n_para = ...
+            get_vel_ransac_dask = dask.delayed(inv_lib.get_vel_ransac)
+            winsize=(100,dt_cum.shape[0])
+            cumda=da.from_array(cum_patch, chunks=winsize)
+            vel2int = get_vel_ransac2(dt_cum, cumda, True)
+            vel2[bool_unnan_pt], intercept2[bool_unnan_pt] = vel2int.compute(num_workers=n_para)
+            '''
             vel2[bool_unnan_pt], intercept2[bool_unnan_pt] = inv_lib.get_vel_ransac(dt_cum, cum_patch, return_intercept=True)
             
             ### Output data and image

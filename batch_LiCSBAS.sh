@@ -300,8 +300,8 @@ if [ $start_step -le 13 -a $end_step -ge 13 ];then
     echo "LiCSBAS13_sb_inv.py $p13_op"
   else
     if [ $cometdev -eq 1 ]; then
-     #extra='--nopngs'
-     extra='--fast --nopngs'
+     extra='--nopngs'
+     #extra='--singular --nopngs'
     else
      extra=''
     fi

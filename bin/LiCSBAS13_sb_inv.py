@@ -57,7 +57,7 @@ Outputs in TS_GEOCml*/ :
 =====
 Usage
 =====
-LiCSBAS13_sb_inv.py -d ifgdir [-t tsadir] [--inv_alg LS|WLS] [--mem_size float] [--gamma float] [--n_para int] [--n_unw_r_thre float] [--keep_incfile] [--gpu] [--fast] [--only_sb] [--nopngs]
+LiCSBAS13_sb_inv.py -d ifgdir [-t tsadir] [--inv_alg LS|WLS] [--mem_size float] [--gamma float] [--n_para int] [--n_unw_r_thre float] [--keep_incfile] [--gpu] [--singular] [--only_sb] [--nopngs]
 
  -d  Path to the GEOCml* dir containing stack of unw data
  -t  Path to the output TS_GEOCml* dir.
@@ -76,14 +76,14 @@ LiCSBAS13_sb_inv.py -d ifgdir [-t tsadir] [--inv_alg LS|WLS] [--mem_size float] 
  --keep_incfile
      Not remove inc and resid files (Default: remove them)
  --gpu        Use GPU (Need cupy module)
- --fast       Use more economic NSBAS computation (should be faster and less demanding, may bring errors in points with many gaps)
+ --singular       Use more economic (unconstrained SBAS) computation (faster and less demanding solution, but considered less precise)
  --only_sb    Perform only SB processing (skipping points with NaNs)
  --nopngs     Avoid generating some (unnecessary) PNG previews of increment residuals etc.
 """
 #%% Change log
 '''
 v1.5.3 20211122 Milan Lazecky, Leeds Uni
- - use fast_nsbas and only_sb to help make processing faster
+ - use singular and only_sb to help make processing computationally economic
 v1.5.2 20210311 Yu Morishita, GSI
  - Include noise indices and LOS unit vector in cum.h5 file
 v1.5.1 20210309 Yu Morishita, GSI
@@ -175,7 +175,7 @@ def main(argv=None):
     tsadir = []
     inv_alg = 'LS'
     gpu = False
-    fastnsbas = False
+    singular = False
     only_sb = False
     nopngs = False
 
@@ -207,7 +207,7 @@ def main(argv=None):
             opts, args = getopt.getopt(argv[1:], "hd:t:",
                                        ["help",  "mem_size=", "gamma=",
                                         "n_unw_r_thre=", "keep_incfile", "nopngs",
-                                        "inv_alg=", "n_para=", "gpu", "fast", "only_sb"])
+                                        "inv_alg=", "n_para=", "gpu", "singular", "only_sb"])
         except getopt.error as msg:
             raise Usage(msg)
         for o, a in opts:
@@ -232,8 +232,8 @@ def main(argv=None):
                 n_para = int(a)
             elif o == '--gpu':
                 gpu = True
-            elif o == '--fast':
-                fastnsbas = True
+            elif o == '--singular':
+                singular = True
             elif o == '--only_sb':
                 only_sb = True
             elif o == '--nopngs':
@@ -689,7 +689,7 @@ def main(argv=None):
                     unwpatch, varpatch, G, dt_cum, gamma, n_para_inv)
             else:
                 inc_tmp, vel_tmp, vconst_tmp = inv_lib.invert_nsbas(
-                    unwpatch, G, dt_cum, gamma, n_para_inv, gpu, fast=fastnsbas, only_sb=only_sb)
+                    unwpatch, G, dt_cum, gamma, n_para_inv, gpu, fast=singular, only_sb=only_sb)
 
             ### Set to valuables
             inc_patch = np.zeros((n_im-1, n_pt_all), dtype=np.float32)*np.nan

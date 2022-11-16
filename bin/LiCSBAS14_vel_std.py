@@ -130,7 +130,7 @@ def main(argv=None):
 
     #%% Read data information
     if not cumfile:
-        os.path.join(tsadir,'cum.h5')
+        cumfile=os.path.join(tsadir,'cum.h5')
         if ransac:
             print('WARNING, using unmasked result (cum.h5) with RANSAC iterations - might take ages (not parallel yet)')
     else:

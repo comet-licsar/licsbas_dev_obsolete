@@ -7,6 +7,7 @@ Overview
 ========
 This script outputs a standard NetCDF4 file using LiCSBAS results
 
+
 =====
 Usage
 =====
@@ -18,6 +19,7 @@ LiCSBAS_out2nc.py [-i infile] [-o outfile] [-m yyyymmdd]
  -m  Master (reference) date (Default: first date)
  --ref_geo  Reference area in geographical coordinates as: lon1/lon2/lat1/lat2
  --clip_geo  Area to clip in geographical coordinates as: lon1/lon2/lat1/lat2
+ --compress, -C  use zlib compression (very small files but time series may take long to load in GIS)
  
  TODO:
  --mask  Path to mask file for ref phase calculation (Default: No mask)
@@ -88,7 +90,7 @@ def loadall2cube(cumfile):
     #LiCSBAS uses 0 instead of nans...
     velxr = velxr.where(velxr!=0)
     velxr.attrs['unit'] = 'mm/year'
-    vinterceptxr = xr.DataArray(cum.vintercept.values.reshape(sizey,sizex), coords=[lat, lon], dims=["lat", "lon"])
+    #vinterceptxr = xr.DataArray(cum.vintercept.values.reshape(sizey,sizex), coords=[lat, lon], dims=["lat", "lon"])
     
     cumxr = xr.DataArray(cum.cum.values, coords=[time, lat, lon], dims=["time","lat", "lon"])
     cumxr.attrs['unit'] = 'mm'
@@ -97,7 +99,7 @@ def loadall2cube(cumfile):
     cube = xr.Dataset()
     cube['cum'] = cumxr
     cube['vel'] = velxr
-    cube['vintercept'] = vinterceptxr
+    #cube['vintercept'] = vinterceptxr
     
     #add coh_avg resid_rms vstd
     if os.path.exists(cohfile):
@@ -167,11 +169,12 @@ def main(argv=None):
     refarea_geo = []
     maskfile = []
     cliparea_geo = []
-
+    compress = False
+    
     #%% Read options
     try:
         try:
-            opts, args = getopt.getopt(argv[1:], "hi:o:m:r:c:", ["help",  "clip_geo=", "ref_geo=", "mask="])
+            opts, args = getopt.getopt(argv[1:], "hi:o:m:r:c:C", ["help", "compress","clip_geo=", "ref_geo=", "mask="])
         except getopt.error as msg:
             raise Usage(msg)
         for o, a in opts:
@@ -184,6 +187,9 @@ def main(argv=None):
                 outfile = a
             elif o == '-m':
                 imd_m = a
+            elif (o == '-C') or (o=='compress'):
+                compress = True
+                print('will use zlib compression')
             elif o == '-r':
                 refarea = a
                 print('ref area in radar coords not implemented yet')
@@ -210,10 +216,8 @@ def main(argv=None):
 
     cube = loadall2cube(cumfile)
     
-    #do filtered
-    cube['vel_filt'] = interp_and_smooth(cube['vel'], 0.5)
     
-    #reference cum to time
+    #reference cum to time (first date will be 0)
     if not imd_m:
         imd_m = cube.time.isel(time=0).astype('str')
     cube['cum'] = cube['cum'] - cube['cum'].sel(time=imd_m)
@@ -225,16 +229,20 @@ def main(argv=None):
         if len(ref.vel) == 0:
             print('warning, no points in the reference area - will export without referencing')
         else:
-            refcoh = ref.where(ref.coh >0.7)
+            refcoh = ref.where(ref.coh >0.6)
             if refcoh.vel.count() < 2:
                 print('warning, the ref area has low coherence! continuing anyway')
                 refcoh = ref
-            for v in refcoh.data_vars.variables:
+            #for v in refcoh.data_vars.variables:
+            for v in ['cum', 'vel', 'vel_filt']:
                 cube[v] = cube[v] - refcoh[v].median(["lat", "lon"])
     
     #only now will clip - this way the reference area can be outside the clip, if needed
     if cliparea_geo:
         cube = cube.sel(lon=slice(minclipx, maxclipx), lat=slice(minclipy, maxclipy))
+    
+    #do filtered (it is nice)
+    cube['vel_filt'] = interp_and_smooth(cube['vel'], 0.5)
     
     #masked = maskit(clipped)
     #masked['vel_filt'] = clipped['vel_filt']
@@ -242,12 +250,19 @@ def main(argv=None):
 
     #masked.to_netcdf(outfile)
 
+
     #just to make sure it is written..
     #check if it does not invert data!
     cube.rio.set_spatial_dims(x_dim="lon", y_dim="lat", inplace=True)
     cube.rio.write_crs("EPSG:4326", inplace=True)
-    cube.to_netcdf(outfile, encoding={'time': {'dtype': 'i4'}})
-
+    if compress:
+        encode = {'cum': {'zlib': True, 'complevel': 9}, 'vel': {'zlib': True, 'complevel': 9}, 
+        'coh': {'zlib': True, 'complevel': 9}, 'rms': {'zlib': True, 'complevel': 9}, 
+        'stc': {'zlib': True, 'complevel': 9}, 'vel_filt': {'zlib': True, 'complevel': 9}, 
+        'time': {'dtype': 'i4'}}
+        cube.to_netcdf(outfile, encoding=encode)
+    else:
+        cube.to_netcdf(outfile, encoding={'time': {'dtype': 'i4'}})
     #%% Finish
     elapsed_time = time.time()-start
     hour = int(elapsed_time/3600)

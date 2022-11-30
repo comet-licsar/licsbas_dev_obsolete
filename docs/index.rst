@@ -6,4 +6,4 @@ We, the COMET team, continue with some minor improvements of the tool, to keep t
 
 The repository updated by COMET is here: https://github.com/comet-licsar/licsbas
 
-The main extra features are explained in tutorial from the COMET InSAR Workshop 2021 - check new parameters ``--nullify`` in step 12, and ``--fast`` in step 13 as (very) useful key changes.
+The main extra features are explained in tutorial from the COMET InSAR Workshop 2021 - check new parameters ``--nullify`` in step 12, and ``--singular --only_sb`` in step 13 as (very) useful key changes.

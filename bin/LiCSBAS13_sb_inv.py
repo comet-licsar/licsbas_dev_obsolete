@@ -689,7 +689,7 @@ def main(argv=None):
                     unwpatch, varpatch, G, dt_cum, gamma, n_para_inv)
             else:
                 inc_tmp, vel_tmp, vconst_tmp = inv_lib.invert_nsbas(
-                    unwpatch, G, dt_cum, gamma, n_para_inv, gpu, fast=singular, only_sb=only_sb)
+                    unwpatch, G, dt_cum, gamma, n_para_inv, gpu, singular=singular, only_sb=only_sb)
 
             ### Set to valuables
             inc_patch = np.zeros((n_im-1, n_pt_all), dtype=np.float32)*np.nan

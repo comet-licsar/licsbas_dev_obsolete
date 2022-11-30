@@ -87,7 +87,7 @@ def make_sb_matrix2(ifgdates):
 
 
 #%%
-def invert_nsbas(unw, G, dt_cum, gamma, n_core, gpu, fast=False, only_sb=False):
+def invert_nsbas(unw, G, dt_cum, gamma, n_core, gpu, singular=False, only_sb=False):
     """
     Calculate increment displacement difference by NSBAS inversion. Points with all unw data are solved by simple SB inversion firstly at a time.
 
@@ -109,20 +109,20 @@ def invert_nsbas(unw, G, dt_cum, gamma, n_core, gpu, fast=False, only_sb=False):
         global Gall, unw_tmp, mask ## for para_wrapper
         # is multicore, let's not use any simplifications
         only_sb = False
-        fast = False
+        singular = False
     
     if gpu:
         only_sb = False
-        fast = False
+        singular = False
 
     ### Settings
     n_pt, n_ifg = unw.shape
     n_im = G.shape[1]+1
 
-    # For computational needs, do either only SB or a fast-nsbas approach (ML, 11/2021)
-    # (note the fast-nsbas approach may be improved later)
+    # For computational needs, do either only SB or a singular-nsbas approach (ML, 11/2021)
+    # (note the singular-nsbas approach may be improved later)
     # (note 2: using G or Gall for full unw data leads to EXACTLY SAME result. but perhaps G is a tiny bit faster..)
-    if only_sb or fast:
+    if only_sb or singular:
         result = np.zeros((G.shape[1], n_pt), dtype=np.float32)*np.nan
 
     else:
@@ -144,7 +144,7 @@ def invert_nsbas(unw, G, dt_cum, gamma, n_core, gpu, fast=False, only_sb=False):
 
     if n_pt_full!=0:
         print('  Solving {0:6}/{1:6}th points with full unw at a time...'.format(n_pt_full, n_pt), flush=True)
-        if only_sb or fast:
+        if only_sb or singular:
             result[:, bool_pt_full] = np.linalg.lstsq(G, unw[bool_pt_full, :].transpose(), rcond=None)[0]
         else:
             ## Solve
@@ -165,7 +165,7 @@ def invert_nsbas(unw, G, dt_cum, gamma, n_core, gpu, fast=False, only_sb=False):
         print('skipping nan points, only SB inversion is performed')
     else:
         print('  Next, solve {0} points including nan point-by-point...'.format(n_pt-n_pt_full), flush=True)
-        if not fast:
+        if not singular:
             ### Solve other points with nan point by point.
             ## Not use GPU because lstsq with small matrix is slower than CPU
             unw_tmp = np.concatenate((unw[~bool_pt_full, :], np.zeros((n_pt-n_pt_full, n_im), dtype=np.float32)), axis=1).transpose()
@@ -173,13 +173,13 @@ def invert_nsbas(unw, G, dt_cum, gamma, n_core, gpu, fast=False, only_sb=False):
             unw_tmp[np.isnan(unw_tmp)] = 0
     
         if n_core == 1:
-            if not fast:
+            if not singular:
                 result[:, ~bool_pt_full] = censored_lstsq_slow(Gall, unw_tmp, mask) #(n_im+1, n_pt)
             else:
                 print('using low precision approach (but much faster)')
                 d = unw[~bool_pt_full, :].transpose()
                 m = result[:, ~bool_pt_full]
-                result[:, ~bool_pt_full] = fast_nsbas(d,G,m,dt_cum)
+                result[:, ~bool_pt_full] = singular_nsbas(d,G,m,dt_cum)
             
         else:
             print('  {} parallel processing'.format(n_core), flush=True)
@@ -190,8 +190,8 @@ def invert_nsbas(unw, G, dt_cum, gamma, n_core, gpu, fast=False, only_sb=False):
             _result = p.map(censored_lstsq_slow_para_wrapper, args) #list[n_pt][length]
             result[:, ~bool_pt_full] = np.array(_result).T
             #
-    if only_sb or fast:
-        # SB/fast-NSBAS result matrix: based on G only, need to calculate vel, setting vconst=0
+    if only_sb or singular:
+        # SB/singular-NSBAS result matrix: based on G only, need to calculate vel, setting vconst=0
         inc = result
         vel = result.sum(axis=0)/dt_cum[-1]
         vconst = np.zeros_like(vel)
@@ -207,7 +207,7 @@ def invert_nsbas(unw, G, dt_cum, gamma, n_core, gpu, fast=False, only_sb=False):
 # orig solution by ML, just instead of full large matrix of increment rows, use only sum and minmax - much faster,
 # making the computation linear, out of matrix solution. This may be source of some delays, but gives good opportunity
 # to improve e.g. by ... some original thoughts
-def fast_nsbas(d,G,m,dt_cum):
+def singular_nsbas(d,G,m,dt_cum):
     # per each point
     #from scipy.optimize import curve_fit
     #def func_vel(x, a):

@@ -340,7 +340,7 @@ def main(argv=None):
             print('--hgt_linear option cannot be used.', file=sys.stderr)
             return 2
         hgt = io_lib.read_img(hgtfile, length, width)
-        Ufile = os.path.join(resultsdir, 'hgt')
+        Ufile = os.path.join(resultsdir, 'U')
         if os.path.exists(Ufile):
             print('scaling by incidence angle')
             cosinc = io_lib.read_img(Ufile, length, width)
